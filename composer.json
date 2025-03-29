@@ -1,0 +1,45 @@
+{
+  "name": "northrook/view-template",
+  "description": "",
+  "type": "library",
+  "license": [
+    "MIT",
+    "BSD-3-Clause"
+  ],
+  "authors": [
+    {
+      "name": "Martin Nielsen",
+      "email": "mn@northrook.com"
+    },
+    {
+      "name": "David Grudl",
+      "homepage": "https://davidgrudl.com"
+    },
+    {
+      "name": "Nette Community",
+      "homepage": "https://nette.org/contributors"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Core\\View\\Template\\": "src"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": ">=8.3",
+    "ext-intl": "*",
+    "ext-fileinfo": "*",
+    "ext-iconv": "*",
+    "northrook/core": "dev-main"
+  },
+  "require-dev": {
+    "northrook/dev": "dev-main",
+    "symfony/cache": "^7.2"
+  },
+  "scripts": {
+    "phpstan": "@php vendor/bin/phpstan analyse",
+    "tester": "tester tests -s"
+  }
+}
