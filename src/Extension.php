@@ -105,7 +105,7 @@ abstract class Extension implements LoggerAwareInterface
     public function beforeRender( Template $template ) : void {}
 
     final public static function order(
-        callable     $callable,
+        callable     $subject,
         array|string $before = [],
         array|string $after = [],
     ) : stdClass {
