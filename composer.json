@@ -32,7 +32,8 @@
     "ext-intl": "*",
     "ext-fileinfo": "*",
     "ext-iconv": "*",
-    "northrook/core": "dev-main"
+    "northrook/core": "dev-main",
+    "northrook/clerk": "dev-main"
   },
   "require-dev": {
     "northrook/dev": "dev-main",

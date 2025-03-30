@@ -10,13 +10,24 @@ declare(strict_types=1);
 namespace Core\View\Template;
 
 use Core\View\Template\Runtime\Template;
+use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use stdClass;
 
 /**
  * Latte extension.
  */
-abstract class Extension
+abstract class Extension implements LoggerAwareInterface
 {
+    protected ?LoggerInterface $logger = null;
+
+    /**
+     * @param ?LoggerInterface $logger
+     */
+    final public function setLogger( ?LoggerInterface $logger ) : void
+    {
+        $this->logger = $logger;
+    }
+
     /**
      * Initializes before template is compiler.
      *

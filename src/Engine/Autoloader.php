@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Core\View\Template\Engine;
 
 use Core\View\Template\Exception\{CompileException, TemplateException};
@@ -9,6 +11,9 @@ use Stringable;
 use SplFileInfo;
 use function Support\{str_includes};
 
+/**
+ * @internal
+ */
 final class Autoloader
 {
     /**

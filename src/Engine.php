@@ -10,7 +10,12 @@ declare(strict_types=1);
 namespace Core\View\Template;
 
 use Core\View\Template\Engine\{Autoloader};
+use Core\Interface\LazyService;
+use Core\Profiler\Interface\Profilable;
+use Core\Profiler\StopwatchProfiler;
 use Latte\Loader;
+use Psr\Log\{LoggerAwareInterface, LoggerInterface};
+use Symfony\Component\Stopwatch\Stopwatch;
 use Core\View\Template\Compiler\{TemplateFilter};
 use Core\View\Template\Compiler\Nodes\TemplateNode;
 use Core\View\Template\Engine\CoreExtension;
@@ -28,10 +33,14 @@ use Throwable;
 use stdClass;
 use Stringable;
 use ReflectionAttribute;
-use function Support\{is_empty, is_path, key_hash, normalize_path, slug};
+use BadMethodCallException;
+use ReflectionException;
+use function Support\{file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 
-class Engine
+class Engine implements LazyService, Profilable, LoggerAwareInterface
 {
+    use StopwatchProfiler;
+
     private ContentType $contentType = ContentType::HTML;
 
     private null|Autoloader|Loader $loader = null;
@@ -61,12 +70,13 @@ class Engine
 
     private ?string $cacheKey;
 
-    private ?string $locale = null;
+    protected ?LoggerInterface $logger = null;
 
     public function __construct(
         ?string                  $cacheDirectory = null,
-        protected readonly array $preloadedTemplates = [],
         protected readonly array $templateDirectories = [],
+        protected readonly array $preloadedTemplates = [],
+        private ?string          $locale = null,
     ) {
         $this->setCacheDirectory( $cacheDirectory );
         $this->filters   = new FilterExecutor();
@@ -74,6 +84,19 @@ class Engine
         $this->providers = new stdClass();
         $this->addExtension( new CoreExtension() );
         $this->addExtension( new SandboxExtension() );
+    }
+
+    /**
+     * @param ?LoggerInterface $logger
+     */
+    final public function setLogger( ?LoggerInterface $logger ) : void
+    {
+        $this->logger = $logger;
+    }
+
+    final public function setProfiler( ?Stopwatch $stopwatch, ?string $category = 'View' ) : void
+    {
+        $this->assignProfiler( $stopwatch, $category );
     }
 
     /**
@@ -119,12 +142,14 @@ class Engine
      */
     public function renderToString( string $name, object|array $params = [], ?string $block = null ) : string
     {
-        if ( is_path( $name ) ) {
-            $name = normalize_path( $name );
-        }
-        $template                       = $this->createTemplate( $name, $this->processParams( $params ) );
+        $profiler = $this->profiler?->event( 'render' );
+        $template = $this->createTemplate( $name, $this->processParams( $params ) );
+
         $template->global->coreCaptured = true;
-        return $template->capture( fn() => $template->render( $block ) );
+
+        $string = $template->capture( fn() => $template->render( $block ) );
+        $profiler?->stop();
+        return $string;
     }
 
     /**
@@ -144,6 +169,7 @@ class Engine
         bool   $clearCache = true,
     ) : Template {
         $this->cacheKey = $clearCache ? null : $this->cacheKey;
+        $name           = is_path( $name ) ? $name = normalize_path( $name ) : $name;
         $class          = $this->getTemplateClass( $name );
         if ( ! \class_exists( $class, false ) ) {
             $this->loadTemplate( $name );
@@ -205,6 +231,7 @@ class Engine
      *
      * @return TemplateNode
      * @throws CompileException
+     * @throws ReflectionException
      */
     public function parse( string $template ) : TemplateNode
     {
@@ -711,11 +738,25 @@ class Engine
     {
         $path = $this->cacheDirectory;
         if ( is_path( $name ) ) {
-            $path .= DIR_SEP.slug(
+            $path .= DIR_SEP;
+            $path .= slug(
                 \implode( '.', \array_slice( \explode( DIR_SEP, $name ), -2 ) ),
-            ).'--';
+            );
+            $path .= '--';
         }
         return $path.$this->getCacheKey( $name ).'.php';
+    }
+
+    final public function clearTemplateCache() : self
+    {
+        file_purge( $this->cacheDirectory );
+
+        return $this;
+    }
+
+    final public function pruneTemplateCache() : array
+    {
+        throw new BadMethodCallException( __METHOD__.' not implemented yet.' );
     }
 
     /**
