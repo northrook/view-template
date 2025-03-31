@@ -28,7 +28,6 @@ use Core\View\Template\Interface\Policy;
 use LogicException;
 use ReflectionClass;
 use ReflectionMethod;
-use ReflectionObject;
 use Throwable;
 use stdClass;
 use Stringable;
@@ -769,7 +768,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * Values that check the expiration of the compiled template.
+     * Returns an 8 character hash based on Template content and used Extensions.
      *
      * @param string $name
      *
@@ -777,16 +776,16 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      */
     final protected function getCacheSignature( string $name ) : string
     {
-        $signature = [
-            \filemtime( __FILE__ ),
-            ...\array_map(
-                fn( $extension ) => \filemtime( ( new ReflectionObject( $extension ) )->getFileName() ),
-                $this->extensions,
-            ),
-            $this->getLoader()->getContent( $name ),
-        ];
+        $signature = \filemtime( __FILE__ );
 
-        return key_hash( 'xxh32', ...$signature );
+        foreach ( $this->extensions as $extension ) {
+            \assert( \class_exists( $extension::class ) );
+            $signature ^= \filemtime(
+                ( new ReflectionClass( $extension::class ) )->getFileName(),
+            );
+        }
+
+        return \hash( 'xxh32', $signature.$this->getLoader()->getContent( $name ) );
     }
 
     /**
@@ -799,14 +798,19 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     final protected function getCacheKey( string $name ) : string
     {
         if ( ! $this->cacheKey ) {
+            $fimemtime = 0;
             $signature = [
                 $this->contentType,
                 ...\array_keys( $this->getFunctions() ),
             ];
 
             foreach ( $this->extensions as $extension ) {
+                \assert( \class_exists( $extension::class ) );
+                $fimemtime ^= \filemtime(
+                    ( new ReflectionClass( $extension::class ) )->getFileName(),
+                );
+
                 $signature[] = $extension::class;
-                $signature[] = \filemtime( ( new ReflectionObject( $extension ) )->getFileName() );
 
                 $extensionKey = $extension->getCacheKey( $this );
 
@@ -820,6 +824,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
                     default                          => $extensionKey,
                 };
             }
+
+            $signature[] = $fimemtime;
 
             $this->cacheKey = key_hash( 'xxh32', ...$signature );
         }
