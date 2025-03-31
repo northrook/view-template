@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Support;
 
+use Core\View\Element\Attributes;
 use Core\View\Template\Compiler\Nodes\{FragmentNode, TextNode};
 use Core\View\Template\Compiler\Nodes\Html\{AttributeNode, ElementNode};
 use Core\View\Template\Compiler\Position;
@@ -12,10 +13,10 @@ use Stringable;
 final class NewNode
 {
     /**
-     * @param string               $name
-     * @param null|Position        $position
-     * @param null|ElementNode     $parent
-     * @param array<string,string> $attributes
+     * @param string           $name
+     * @param null|Position    $position
+     * @param null|ElementNode $parent
+     * @param null|Attributes  $attributes
      *
      * @return ElementNode
      */
@@ -23,7 +24,7 @@ final class NewNode
         string       $name,
         ?Position    $position = null,
         ?ElementNode $parent = null,
-        array        $attributes = [],
+        ?Attributes  $attributes = null,
     ) : ElementNode {
         $element = new ElementNode(
             $name,
@@ -33,15 +34,17 @@ final class NewNode
         $element->attributes = new FragmentNode();
         $element->content    = new FragmentNode();
 
-        foreach ( $attributes as $attribute => $value ) {
-            $element->attributes->append( NewNode::text( ' ' ) );
-            $element->attributes->append(
-                new AttributeNode(
-                    NewNode::text( $attribute ),
-                    $value ? NewNode::text( $value ) : null,
-                    '"',
-                ),
-            );
+        if ( $attributes ) {
+            foreach ( $attributes->resolveAttributes( true ) as $attribute => $value ) {
+                $element->attributes->append( self::text( ' ' ) );
+                $element->attributes->append(
+                    new AttributeNode(
+                        self::text( $attribute ),
+                        $value ? self::text( $value ) : null,
+                        '"',
+                    ),
+                );
+            }
         }
 
         return $element;

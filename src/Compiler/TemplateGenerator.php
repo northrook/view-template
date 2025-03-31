@@ -9,12 +9,13 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler;
 
+use Core\Profiler\{ClerkProfiler};
 use Core\View\Template\Support\PhpGenerator;
 use Core\View\Template\Compiler\Nodes\{NopNode, TemplateNode, TextNode};
 use Core\View\Template\ContentType;
 
 /**
- * Template code generator.
+ * @internal
  */
 final class TemplateGenerator
 {
@@ -22,53 +23,55 @@ final class TemplateGenerator
 
     public const string NAMESPACE = 'Runtime';
 
-    // $ʟ_args
+    /** $ʟ_args */
     public const string ARGS = '$__args__';
 
-    // $ʟ_v
+    /** $ʟ_v */
     public const string ARG_VAR = '$__var__';
 
-    // $ʟ_fi
+    /** $ʟ_fi */
     public const string ARG_FILTER = '$__filter__';
 
-    // $ʟ_tmp
+    /** $ʟ_tmp */
     public const string ARG_TEMP = '$__temp__';
 
-    // $ʟ_tag
+    /** $ʟ_tag */
     public const string ARG_TAG = '$__tag__';
 
-    // $ʟ_loc
+    /** $ʟ_loc */
     public const string ARG_LOC = '$__loc__';
 
-    // $ʟ_ifA
+    /** $ʟ_ifA */
     public const string ARG_IF_A = '$__if_a__';
 
-    // $ʟ_ifB
+    /** $ʟ_ifB */
     public const string ARG_IF_B = '$__if_b__';
 
-    // $ʟ_ifc
+    /** $ʟ_ifc */
     public const string ARG_IF_C = '$__if_c__';
 
-    // $ʟ_try
+    /** $ʟ_try */
     public const string ARG_TRY = '$__try__';
 
-    // $ʟ_it
+    /** $ʟ_it */
     public const string ARG_IT = '$__it__';
 
-    // $ʟ_nm
+    /** $ʟ_nm */
     public const string ARG_NAME = '$__name__';
 
-    // $ʟ_bp
+    /** $ʟ_bp */
     public const string ARG_BEGIN_PRINT = '$__begin_print__';
 
-    // $ʟ_switch
+    /** $ʟ_switch */
     public const string ARG_SWITCH = '$__switch__';
 
-    // $ʟ_e
+    /** $ʟ_e */
     public const string ARG_EXCEPTION = '$__exception__';
 
-    // $ʟ_l
+    /** $ʟ_l */
     public const string ARG_LINE = '$__line__';
+
+    public function __construct( protected readonly ?ClerkProfiler $profiler ) {}
 
     /**
      * Compiles nodes to PHP file
@@ -86,6 +89,8 @@ final class TemplateGenerator
         ?string      $templateName = null,
         bool         $strictMode = false,
     ) : string {
+        $profiler = $this->profiler->event( "template.generate.{$templateName}" );
+
         $context   = new PrintContext( $node->contentType );
         $generator = new PhpGenerator(
             className : $className,
@@ -93,7 +98,8 @@ final class TemplateGenerator
         );
 
         $code = $node->main->print( $context );
-        $code = $this->buildParams( $code, [], self::ARGS, $context );
+        $code = $this->templateParameters( $code, [], self::ARGS, $context );
+        $profiler?->lap();
 
         $generator
                 // TODO : Multi-line $templateName should be treated as a phpdoc codeblock
@@ -102,6 +108,7 @@ final class TemplateGenerator
             ->uses( $this::FQN )
             ->extends( $this::NAMESPACE.'\\Template' )
             ->addMethod( 'main', $code, 'array '.self::ARGS );
+        $profiler?->lap();
 
         $head = ( new NodeTraverser() )->traverse(
             $node->head,
@@ -109,10 +116,11 @@ final class TemplateGenerator
         );
 
         $code = $head->print( $context );
+        $profiler?->lap();
 
         if ( $code || $context->paramsExtraction ) {
             $code .= 'return get_defined_vars();';
-            $code = self::buildParams( $code, $context->paramsExtraction, '$this->params', $context );
+            $code = $this->templateParameters( $code, $context->paramsExtraction, '$this->params', $context );
             $generator->addMethod( 'prepare', $code, returns : 'array' );
         }
 
@@ -137,7 +145,7 @@ final class TemplateGenerator
                         : [$block->method, $block->escaping];
             }
 
-            $body = $this->buildParams( $block->content, $block->parameters, self::ARGS, $context );
+            $body = $this->templateParameters( $block->content, $block->parameters, self::ARGS, $context );
             if ( ! $isDynamic && \str_contains( $body, '$' ) ) {
                 $embedded = $block->tag->name === 'block' && \is_int( $block->layer ) && $block->layer;
                 $body     = 'extract( '.( $embedded ? 'end($this->varStack)' : '$this->params' ).' );'.$body;
@@ -150,6 +158,7 @@ final class TemplateGenerator
                 comment   : $block->tag->getNotation( true ).' on line '.$block->tag->position->line,
             );
         }
+        $profiler?->lap();
 
         if ( isset( $meta ) ) {
             $generator->addConstant(
@@ -158,10 +167,14 @@ final class TemplateGenerator
             );
         }
 
-        return $generator->toString();
+        $template = $generator->toString();
+
+        $profiler?->stop();
+
+        return $template;
     }
 
-    private function buildParams(
+    private function templateParameters(
         string       $body,
         array        $params,
         string       $cont,

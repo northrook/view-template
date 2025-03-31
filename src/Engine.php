@@ -13,6 +13,7 @@ use Core\View\Template\Engine\{Autoloader, PreformatterExtension};
 use Core\Interface\LazyService;
 use Core\Profiler\Interface\Profilable;
 use Core\Profiler\StopwatchProfiler;
+use Core\View\Template\Sandbox\SandboxExtension;
 use Latte\Loader;
 use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -24,7 +25,6 @@ use Core\View\Template\Support\Helpers;
 use Core\View\Template\Runtime\{FilterExecutor, FunctionExecutor, Template};
 use Core\View\Template\Compiler\{PhpHelpers, TemplateFunction, TemplateGenerator, TemplateParser};
 use Core\View\Template\Interface\Policy;
-use Core\View\Template\Sandbox\SandboxExtension;
 use LogicException;
 use ReflectionClass;
 use ReflectionMethod;
@@ -35,7 +35,7 @@ use Stringable;
 use ReflectionAttribute;
 use BadMethodCallException;
 use ReflectionException;
-use function Support\{file_purge, is_empty, is_path, key_hash, normalize_path, slug};
+use function Support\{class_id, file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 
 class Engine implements LazyService, Profilable, LoggerAwareInterface
 {
@@ -84,7 +84,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $this->functions = new FunctionExecutor();
         $this->providers = new stdClass();
         $this->addExtension( new CoreExtension() );
-        $this->addExtension( new SandboxExtension() );
         if ( $this->preformatter ) {
             $this->addExtension( new PreformatterExtension() );
         }
@@ -162,24 +161,24 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param string $name
      * @param array  $params
      * @param bool   $clearCache
+     * @param bool   $cache
      *
      * @return Template
      * @throws CompileException
      * @throws SecurityViolationException
      */
-    public function createTemplate(
+    final public function createTemplate(
         string $name,
         array  $params = [],
         bool   $clearCache = true,
+        bool   $cache = true,
     ) : Template {
         $this->cacheKey = $clearCache ? null : $this->cacheKey;
-        $name           = is_path( $name ) ? $name = normalize_path( $name ) : $name;
+        $name           = is_path( $name ) ? normalize_path( $name ) : $name;
         $class          = $this->getTemplateClass( $name );
         if ( ! \class_exists( $class, false ) ) {
-            $this->loadTemplate( $name );
+            $this->loadTemplate( $name, $cache );
         }
-
-        // dump( $class );
 
         $this->providers->fn = $this->functions;
         return new $class(
@@ -284,8 +283,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      */
     public function generate( TemplateNode $node, string $name ) : string
     {
-        $generator = new TemplateGenerator();
-        return $generator->generate(
+        return ( new TemplateGenerator( $this->profiler ) )->generate(
             $node,
             $this->getTemplateClass( $name ),
             $name,
@@ -302,27 +300,28 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @throws CompileException
      * @throws SecurityViolationException
      */
-    public function warmupCache( string $name ) : void
+    final public function warmupCache( string $name ) : void
     {
         if ( ! $this->cacheDirectory ) {
-            throw new LogicException( 'Path to temporary directory is not set.' );
+            throw new LogicException( $this::class.' has no cache directory set.' );
         }
 
         $class = $this->getTemplateClass( $name );
         if ( ! \class_exists( $class, false ) ) {
-            $this->loadTemplate( $name );
+            $this->loadTemplate( $name, true );
         }
     }
 
     /**
      * @param string $name
+     * @param bool   $cache
      *
      * @throws SecurityViolationException
      * @throws CompileException
      */
-    private function loadTemplate( string $name ) : void
+    private function loadTemplate( string $name, bool $cache ) : void
     {
-        if ( ! $this->cacheDirectory ) {
+        if ( ! $this->cacheDirectory || ! $cache ) {
             $compiled = $this->compile( $name );
             if ( @eval( \substr( $compiled, 5 ) ) === false ) { // @ is escalated to exception, substr removes <?php
                 throw ( new CompileException( 'Error in template: '.\error_get_last()['message'] ) )
@@ -477,9 +476,15 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @return Engine
      */
-    public function addExtension( Extension $extension ) : static
+    public function addExtension( Extension $extension ) : self
     {
-        $this->extensions[] = $extension;
+        $id = class_id( $extension );
+
+        if ( \array_key_exists( $id, $this->extensions ) ) {
+            return $this;
+        }
+
+        $this->extensions[$id] = $extension;
 
         foreach ( $extension->getFilters() as $name => $value ) {
             $this->filters->add( $name, $value );
@@ -570,6 +575,18 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         return (array) $this->providers;
     }
 
+    public function setExceptionHandler( callable $handler ) : static
+    {
+        $this->providers->coreExceptionHandler = $handler;
+        return $this;
+    }
+
+    public function setSandboxMode( bool $state = true ) : static
+    {
+        $this->sandboxed = $state;
+        return $this->addExtension( new SandboxExtension() );
+    }
+
     public function setPolicy( ?Policy $policy ) : static
     {
         $this->policy = $policy;
@@ -581,18 +598,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         return ! $effective || $this->sandboxed
                 ? $this->policy
                 : null;
-    }
-
-    public function setExceptionHandler( callable $handler ) : static
-    {
-        $this->providers->coreExceptionHandler = $handler;
-        return $this;
-    }
-
-    public function setSandboxMode( bool $state = true ) : static
-    {
-        $this->sandboxed = $state;
-        return $this;
     }
 
     public function setContentType( ContentType $type ) : static
