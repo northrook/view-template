@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template;
 
-use Core\View\Template\Engine\{Autoloader};
+use Core\View\Template\Engine\{Autoloader, PreformatterExtension};
 use Core\Interface\LazyService;
 use Core\Profiler\Interface\Profilable;
 use Core\Profiler\StopwatchProfiler;
@@ -77,6 +77,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         protected readonly array $templateDirectories = [],
         protected readonly array $preloadedTemplates = [],
         private ?string          $locale = null,
+        private readonly bool    $preformatter = false,
     ) {
         $this->setCacheDirectory( $cacheDirectory );
         $this->filters   = new FilterExecutor();
@@ -84,6 +85,9 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $this->providers = new stdClass();
         $this->addExtension( new CoreExtension() );
         $this->addExtension( new SandboxExtension() );
+        if ( $this->preformatter ) {
+            $this->addExtension( new PreformatterExtension() );
+        }
     }
 
     /**
