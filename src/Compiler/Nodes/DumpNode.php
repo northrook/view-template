@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
+use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\{PrintContext, Tag};
 use Generator;
 
@@ -22,7 +22,10 @@ class DumpNode extends StatementNode
     public ?ExpressionNode $expression = null;
 
     /**
-     * @throws \Core\View\Template\Exception\CompileException
+     * @param Tag $tag
+     *
+     * @return DumpNode
+     * @throws CompileException
      */
     public static function create( Tag $tag ) : static
     {
@@ -37,13 +40,13 @@ class DumpNode extends StatementNode
     {
         return $this->expression
                 ? $context->format(
-                    'Tracy\Debugger::barDump(%node, %dump) %line;',
+                    'dump(%node, %dump) %line;',
                     $this->expression,
                     $this->expression->print( $context ),
                     $this->position,
                 )
                 : $context->format(
-                    "Tracy\\Debugger::barDump(get_defined_vars(), 'variables') %line;",
+                    "dump(get_defined_vars(), 'variables') %line;",
                     $this->position,
                 );
     }

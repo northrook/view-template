@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Core\View\Template\Engine;
 
 use Core\View\Template\Exception\{CompileException, TemplateException};
-use Core\Pathfinder\Path;
 use InvalidArgumentException;
 use Stringable;
 use SplFileInfo;
