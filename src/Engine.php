@@ -118,34 +118,71 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * Renders template to output.
      *
      * @param string       $name
-     * @param array|object $params
+     * @param array|object $parameters
      * @param ?string      $block
+     * @param bool         $cache      [true]
      *
      * @throws Throwable
      */
-    public function render( string $name, object|array $params = [], ?string $block = null ) : void
-    {
-        $template = $this->createTemplate( $name, $this->processParams( $params ) );
+    public function print(
+        string       $name,
+        object|array $parameters = [],
+        ?string      $block = null,
+        bool         $cache = true,
+    ) : void {
+        $template = $this->createTemplate( $name, $this->templateParameters( $parameters ), $cache );
 
         $template->global->coreCaptured = false;
         $template->render( $block );
     }
 
     /**
+     * Renders template to output.
+     *
+     * @param string       $template
+     * @param array|object $parameters
+     * @param bool         $cache      [true]
+     *
+     * @return string
+     * @throws CompileException
+     * @throws SecurityViolationException
+     * @throws Throwable
+     */
+    public function render(
+        string       $template,
+        object|array $parameters = [],
+        bool         $cache = true,
+    ) : string {
+        $profiler = $this->profiler?->event( 'render' );
+        $template = $this->createTemplate( $template, $parameters, $cache );
+
+        $template->global->coreCaptured = true;
+
+        $string = $template->capture( fn() => $template->render() );
+        $profiler?->stop();
+        return $string;
+    }
+
+    /**
      * Renders template to string.
      *
      * @param string       $name
-     * @param array|object $params
+     * @param array|object $parameters
      * @param ?string      $block
+     * @param bool         $cache
      *
      * @return string
      * @throws CompileException
      * @throws Throwable
      */
-    public function renderToString( string $name, object|array $params = [], ?string $block = null ) : string
-    {
+    public function renderToString(
+        string       $name,
+        object|array $parameters = [],
+        ?string      $block = null,
+        bool         $cache = true,
+    ) : string {
         $profiler = $this->profiler?->event( 'render' );
-        $template = $this->createTemplate( $name, $this->processParams( $params ) );
+        $template = $this->createTemplate( $name, $parameters, $cache );
 
         $template->global->coreCaptured = true;
 
@@ -157,24 +194,29 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Creates template object.
      *
-     * @param string $name
-     * @param array  $params
-     * @param bool   $clearCache
-     * @param bool   $cache
+     * @internal
+     *
+     * @param string       $name
+     * @param array|object $parameters
+     * @param bool         $cache
+     * @param bool         $preserveCacheKey
      *
      * @return Template
      * @throws CompileException
      * @throws SecurityViolationException
      */
     final public function createTemplate(
-        string $name,
-        array  $params = [],
-        bool   $clearCache = true,
-        bool   $cache = true,
+        string       $name,
+        object|array $parameters = [],
+        bool         $cache = true,
+        bool         $preserveCacheKey = false,
     ) : Template {
-        $this->cacheKey = $clearCache ? null : $this->cacheKey;
-        $name           = is_path( $name ) ? normalize_path( $name ) : $name;
-        $class          = $this->getTemplateClass( $name );
+        if ( ! $preserveCacheKey ) {
+            $this->cacheKey = null;
+        }
+
+        $name  = is_path( $name ) ? normalize_path( $name ) : $name;
+        $class = $this->getTemplateClass( $name );
         if ( ! \class_exists( $class, false ) ) {
             $this->loadTemplate( $name, $cache );
         }
@@ -182,7 +224,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $this->providers->fn = $this->functions;
         return new $class(
             $this,
-            $params,
+            $this->templateParameters( $parameters ),
             $this->filters,
             $this->providers,
             $name,
@@ -192,13 +234,15 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Compiles template to PHP code.
      *
+     * @internal
+     *
      * @param string $name
      *
      * @return string
      * @throws CompileException
      * @throws SecurityViolationException
      */
-    public function compile( string $name ) : string
+    final public function compile( string $name ) : string
     {
         if ( $this->sandboxed && ! $this->policy ) {
             throw new LogicException( 'In sandboxed mode you need to set a security policy.' );
@@ -235,7 +279,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @throws CompileException
      * @throws ReflectionException
      */
-    public function parse( string $template ) : TemplateNode
+    final public function parse( string $template ) : TemplateNode
     {
         $parser         = new TemplateParser();
         $parser->strict = $this->strictParsing;
@@ -256,7 +300,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @param TemplateNode $node
      */
-    public function applyPasses( TemplateNode &$node ) : void
+    final protected function applyPasses( TemplateNode &$node ) : void
     {
         $passes = [];
 
@@ -280,7 +324,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @return string
      */
-    public function generate( TemplateNode $node, string $name ) : string
+    final protected function generate( TemplateNode $node, string $name ) : string
     {
         return ( new TemplateGenerator( $this->profiler ) )->generate(
             $node,
@@ -685,24 +729,24 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * @param array|object $params
+     * @param array|object $parameters
      *
      * @return array
      */
-    private function processParams( object|array $params ) : array
+    private function templateParameters( object|array $parameters ) : array
     {
-        if ( \is_array( $params ) ) {
-            return $params;
+        if ( \is_array( $parameters ) ) {
+            return $parameters;
         }
 
-        $methods = ( new ReflectionClass( $params ) )->getMethods( ReflectionMethod::IS_PUBLIC );
+        $methods = ( new ReflectionClass( $parameters ) )->getMethods( ReflectionMethod::IS_PUBLIC );
 
         foreach ( $methods as $method ) {
             if ( $method->getAttributes( TemplateFilter::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
-                $this->addFilter( $method->name, [$params, $method->name] );
+                $this->addFilter( $method->name, [$parameters, $method->name] );
             }
             if ( $method->getAttributes( TemplateFunction::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
-                $this->addFunction( $method->name, [$params, $method->name] );
+                $this->addFunction( $method->name, [$parameters, $method->name] );
             }
 
             $docblock = $method->getDocComment();
@@ -724,7 +768,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             }
         }
 
-        return \array_filter( (array) $params, fn( $key ) => $key[0] !== "\0", ARRAY_FILTER_USE_KEY );
+        return \array_filter( (array) $parameters, fn( $key ) => $key[0] !== "\0", ARRAY_FILTER_USE_KEY );
     }
 
     public function __get( string $name )

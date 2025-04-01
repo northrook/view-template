@@ -36,7 +36,7 @@ abstract class Template
     public stdClass $global;
 
     /** @var array @internal */
-    protected array $params = [];
+    protected array $parameters = [];
 
     protected FilterExecutor $filters;
 
@@ -74,9 +74,9 @@ abstract class Template
         stdClass       $providers,
         string         $name,
     ) {
-        $this->engine  = $engine;
-        $this->params  = $params;
-        $this->filters = $filters;
+        $this->engine     = $engine;
+        $this->parameters = $params;
+        $this->filters    = $filters;
         $this->name    = $name;
         $this->global  = $providers;
         $this->initBlockLayer( self::LAYER_TOP );
@@ -101,7 +101,7 @@ abstract class Template
      */
     public function getParameters() : array
     {
-        return $this->params;
+        return $this->parameters;
     }
 
     /**
@@ -144,7 +144,7 @@ abstract class Template
             $extension->beforeRender( $this );
         }
 
-        $params = $this->prepare();
+        $parameters = $this->prepare();
 
         if ( $this->parentName === null && ! $this->referringTemplate && isset( $this->global->coreParentFinder ) ) {
             $this->parentName = ( $this->global->coreParentFinder )( $this );
@@ -158,14 +158,14 @@ abstract class Template
             }
         }
         elseif ( $this->parentName ) { // extends
-            $this->params = $params;
-            $this->createTemplate( $this->parentName, $params, 'extends' )->render( $block );
+            $this->parameters = $parameters;
+            $this->createTemplate( $this->parentName, $parameters, 'extends' )->render( $block );
         }
         elseif ( $block !== null ) { // single block rendering
-            $this->renderBlock( $block, $this->params );
+            $this->renderBlock( $block, $this->parameters );
         }
         else {
-            $this->main( $params );
+            $this->main( $parameters );
         }
     }
 
@@ -182,13 +182,13 @@ abstract class Template
      * @throws \Core\View\Template\Exception\CompileException
      * @throws \Core\View\Template\Exception\SecurityViolationException
      */
-    public function createTemplate( string $name, array $params, string $referenceType ) : self
+    final public function createTemplate( string $name, array $params, string $referenceType ) : self
     {
         $name = $this->engine->getLoader()->getReferredName( $name, $this->name );
 
         $referred = $referenceType === 'sandbox'
                 ? ( clone $this->engine )->setSandboxMode()->createTemplate( $name, $params )
-                : $this->engine->createTemplate( $name, $params, clearCache : false );
+                : $this->engine->createTemplate( $name, $params, preserveCacheKey : true );
 
         $referred->referringTemplate = $this;
         $referred->referenceType     = $referenceType;
@@ -231,7 +231,7 @@ abstract class Template
      */
     public function prepare() : array
     {
-        return $this->params;
+        return $this->parameters;
     }
 
     /**

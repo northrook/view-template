@@ -44,9 +44,16 @@ class PhpGenerator implements Printable
 
     protected ?string $comment = null;
 
+    /**
+     * @param string          $className
+     * @param string|string[] $uses
+     * @param null|string     $namespace
+     * @param null|string     $generator
+     * @param bool            $strict
+     */
     public function __construct(
         string       $className,
-        string|array $imports = [],
+        string|array $uses = [],
         ?string      $namespace = null,
         ?string      $generator = null,
         public bool  $strict = false,
@@ -62,7 +69,7 @@ class PhpGenerator implements Printable
         $this->name      = $className;
         $this->namespace = $namespace;
 
-        $this->uses = \is_string( $imports ) ? [$imports] : $imports;
+        $this->uses = \is_string( $uses ) ? [$uses] : $uses;
     }
 
     public function __toString() : string
@@ -89,7 +96,44 @@ class PhpGenerator implements Printable
             }
         }
 
-        return $this->optimize( $output );
+        return \trim( \implode( NEWLINE, $output ) ).NEWLINE;
+    }
+
+    public function generate( bool $regenerate = false ) : string
+    {
+        if ( $this->php && ! $regenerate ) {
+            return 'cached value';
+        }
+
+        $this->php = <<<PHP
+            {$this->generateHead()}
+            
+            {$this->generateClass()}
+            {
+                {$this->generateBody()}
+            }
+            PHP;
+
+        $dateTime = Time::now();
+
+        $timestamp          = $dateTime->unixTimestamp;
+        $formattedTimestamp = $dateTime->format( 'Y-m-d H:i:s e' );
+        $storageDataHash    = key_hash( 'xxh64', $this->php );
+
+        // dump( $this->php );
+        return <<<PHP
+            <?php
+                   
+            /*------------------------------------------------------%{$timestamp}%-
+                   
+               Name      : {$this->className}
+               Generated : {$formattedTimestamp}
+               Generator : {$this->generator}
+                   
+               Do not edit it manually.
+                   
+            -#{$storageDataHash}#------------------------------------------------*/
+            PHP.\substr( $this->php, 5 );
     }
 
     public static function dump( mixed $value, bool $multiline = false ) : string
@@ -119,35 +163,33 @@ class PhpGenerator implements Printable
     {
         $string = \trim( (string) ( \is_array( $string ) ? \implode( "\n", $string ) : $string ) );
 
-        $declaredPHP = \str_starts_with( $string, '<?php' );
-
-        if ( $declaredPHP ) {
+        if ( ! \str_starts_with( $string, '<?php' ) ) {
             $string = '<?php '.$string;
         }
 
-        $res    = '';
+        $outout = '';
         $tokens = \token_get_all( $string );
         $start  = null;
-        $str    = '';
+        $string = '';
 
         for ( $i = 0; $i < \count( $tokens ); $i++ ) {
             $token = $tokens[$i];
             if ( $token[0] === T_ECHO ) {
                 if ( ! $start ) {
-                    $str   = '';
-                    $start = \strlen( $res );
+                    $string = '';
+                    $start  = \strlen( $outout );
                 }
             }
             elseif ( $start && $token[0] === T_CONSTANT_ENCAPSED_STRING && $token[1][0] === "'" ) {
-                $str .= \stripslashes( \substr( $token[1], 1, -1 ) );
+                $string .= \stripslashes( \substr( $token[1], 1, -1 ) );
             }
             elseif ( $start && $token === ';' ) {
-                if ( $str !== '' ) {
-                    $res = \substr_replace(
-                        $res,
-                        'echo '.( $str === "\n" ? '"\n"' : \var_export( $str, true ) ),
+                if ( $string !== '' ) {
+                    $outout = \substr_replace(
+                        $outout,
+                        'echo '.( $string === "\n" ? '"\n"' : \var_export( $string, true ) ),
                         $start,
-                        \strlen( $res ) - $start,
+                        \strlen( $outout ) - $start,
                     );
                 }
             }
@@ -155,10 +197,10 @@ class PhpGenerator implements Printable
                 $start = null;
             }
 
-            $res .= \is_array( $token ) ? $token[1] : $token;
+            $outout .= \is_array( $token ) ? $token[1] : $token;
         }
 
-        return $declaredPHP ? \substr( $res, 5 ) : $res;
+        return \trim( \substr( $outout, 5 ) );
     }
 
     final protected function getUses() : array
@@ -186,7 +228,7 @@ class PhpGenerator implements Printable
             $php['use'] = \implode( "\n", $php['use'] );
         }
 
-        return \trim( \implode( "\n\n", $php ), " \n\r\t\v\0" );
+        return \trim( \implode( "\n\n", $php ) );
     }
 
     private function generateClass() : string
@@ -227,7 +269,7 @@ class PhpGenerator implements Printable
             $class = \rtrim( $class, ' ,' );
         }
 
-        return \trim( $class, " \n\r\t\v\0" );
+        return $comment.NEWLINE.\trim( $class );
     }
 
     private function generateBody() : string
@@ -247,42 +289,7 @@ class PhpGenerator implements Printable
             $php[$fragment::TYPE.".{$fragment->name}"] = $tab.$fragment->resolve();
         }
 
-        return \trim( \implode( "\n\n", $php ), " \n\r\t\v\0" );
-    }
-
-    public function generate( bool $regenerate = false ) : string
-    {
-        if ( $this->php && ! $regenerate ) {
-            return 'cached value';
-        }
-        $this->php = <<<PHP
-            {$this->generateHead()}
-            
-            {$this->generateClass()}
-            {
-                {$this->generateBody()}
-            }
-            PHP;
-
-        $dateTime = Time::now();
-
-        $timestamp          = $dateTime->unixTimestamp;
-        $formattedTimestamp = $dateTime->format( 'Y-m-d H:i:s e' );
-        $storageDataHash    = key_hash( 'xxh64', $this->php );
-
-        return <<<PHP
-            <?php
-                   
-            /*------------------------------------------------------%{$timestamp}%-
-                   
-               Name      : {$this->className}
-               Generated : {$formattedTimestamp}
-               Generator : {$this->generator}
-                   
-               Do not edit it manually.
-                   
-            -#{$storageDataHash}#------------------------------------------------*/
-            PHP.\substr( $this->php, 5 );
+        return \trim( \implode( "\n\n", $php ) );
     }
 
     public function uses( string ...$fqn ) : self
