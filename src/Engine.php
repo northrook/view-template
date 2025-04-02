@@ -63,17 +63,11 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     private bool $strictParsing = false;
 
-    private ?string $cacheDirectory = null;
-
     private bool $sandboxed = false;
 
     private ?string $phpBinary = null;
 
     private ?string $cacheKey;
-
-    protected ?LoggerInterface $logger = null;
-
-    protected bool $cache = true;
 
     // <editor-fold desc="Instantiation">
 
@@ -83,13 +77,17 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param array<string,string>    $preloadedTemplates
      * @param null|string             $locale
      * @param bool                    $preformatter
+     * @param bool                    $cache
+     * @param ?LoggerInterface        $logger
      */
     public function __construct(
-        ?string                  $cacheDirectory = null,
-        protected readonly array $templateDirectories = [],
-        protected readonly array $preloadedTemplates = [],
-        private ?string          $locale = null,
-        private readonly bool    $preformatter = false,
+        private ?string            $cacheDirectory = null,
+        protected readonly array   $templateDirectories = [],
+        protected readonly array   $preloadedTemplates = [],
+        private ?string            $locale = null,
+        private readonly bool      $preformatter = false,
+        protected bool             $cache = true,
+        protected ?LoggerInterface $logger = null,
     ) {
         $this->setCacheDirectory( $cacheDirectory );
         $this->filters   = new FilterExecutor();

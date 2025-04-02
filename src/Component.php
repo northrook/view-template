@@ -6,20 +6,20 @@ namespace Core\View\Template;
 
 use BadMethodCallException;
 use Cache\CachePoolTrait;
-use Core\Profiler\{ClerkProfiler};
+use Core\Profiler\ClerkProfiler;
 use Core\View\Attribute\ViewComponent;
 use Core\View\Element;
 use Core\View\Element\Attributes;
+use Core\View\Template\Compiler\{Node, Position};
 use Core\View\Template\Compiler\Nodes\FragmentNode;
 use Core\View\Template\Compiler\Nodes\Html\ElementNode;
-use Core\View\Template\Compiler\Position;
 use Core\View\Template\Component\Node\StaticNode;
 use Core\View\Template\Support\NewNode;
-use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
-use function Support\{slug};
+use InvalidArgumentException;
+use function Support\slug;
 
 abstract class Component
 {
@@ -44,6 +44,8 @@ abstract class Component
     public readonly Attributes $attributes;
 
     abstract public function render() : string;
+
+    abstract protected function getNode() : Node;
 
     /**
      * Process arguments passed to the {@see self::create()} method.
@@ -160,6 +162,16 @@ abstract class Component
         $viewAttribute->setClassName( static::class );
 
         return $viewAttribute;
+    }
+
+    final protected function setEngine( Engine $engine ) : void
+    {
+        $this->engine = $engine;
+    }
+
+    final protected function getEngine() : Engine
+    {
+        return $this->engine ??= new Engine( cache : false );
     }
 
     private function componentUniqueID( string $set ) : string
