@@ -34,11 +34,14 @@
     "ext-iconv": "*",
     "northrook/core": "dev-main",
     "northrook/clerk": "dev-main",
-    "northrook/view-element": "dev-main"
+    "northrook/view-element": "dev-main",
+    "psr/log": "^3.0",
+    "northrook/cache": "dev-main"
   },
   "require-dev": {
     "northrook/dev": "dev-main",
-    "symfony/cache": "^7.2"
+    "symfony/cache": "^7.2",
+    "northrook/view": "dev-main"
   },
   "scripts": {
     "phpstan": "@php vendor/bin/phpstan analyse",

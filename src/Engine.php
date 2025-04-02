@@ -14,6 +14,7 @@ use Core\Interface\LazyService;
 use Core\Profiler\Interface\Profilable;
 use Core\Profiler\StopwatchProfiler;
 use Core\View\Template\Sandbox\SandboxExtension;
+use Exception;
 use Latte\Loader;
 use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -35,6 +36,7 @@ use ReflectionAttribute;
 use BadMethodCallException;
 use ReflectionException;
 use function Support\{class_id, file_purge, is_empty, is_path, key_hash, normalize_path, slug};
+use const Support\AUTO;
 
 class Engine implements LazyService, Profilable, LoggerAwareInterface
 {
@@ -71,6 +73,17 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     protected ?LoggerInterface $logger = null;
 
+    protected bool $cache = true;
+
+    // <editor-fold desc="Instantiation">
+
+    /**
+     * @param null|string             $cacheDirectory
+     * @param array<array-key,string> $templateDirectories
+     * @param array<string,string>    $preloadedTemplates
+     * @param null|string             $locale
+     * @param bool                    $preformatter
+     */
     public function __construct(
         ?string                  $cacheDirectory = null,
         protected readonly array $templateDirectories = [],
@@ -101,19 +114,9 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $this->assignProfiler( $stopwatch, $category );
     }
 
-    /**
-     * Sets path to temporary directory.
-     *
-     * @param ?string $path
-     *
-     * @return Engine
-     */
-    final public function setCacheDirectory( ?string $path ) : self
-    {
-        $this->cacheDirectory = $path ? normalize_path( $path ) : null;
-        return $this;
-    }
+    // </editor-fold>
 
+    // <editor-fold desc="Output">
     /**
      * Renders template to output.
      *
@@ -128,7 +131,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         string       $name,
         object|array $parameters = [],
         ?string      $block = null,
-        bool         $cache = true,
+        ?bool        $cache = AUTO,
     ) : void {
         $template = $this->createTemplate( $name, $this->templateParameters( $parameters ), $cache );
 
@@ -151,7 +154,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     public function render(
         string       $template,
         object|array $parameters = [],
-        bool         $cache = true,
+        ?bool        $cache = AUTO,
     ) : string {
         $profiler = $this->profiler?->event( 'render' );
         $template = $this->createTemplate( $template, $parameters, $cache );
@@ -179,7 +182,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         string       $name,
         object|array $parameters = [],
         ?string      $block = null,
-        bool         $cache = true,
+        ?bool        $cache = AUTO,
     ) : string {
         $profiler = $this->profiler?->event( 'render' );
         $template = $this->createTemplate( $name, $parameters, $cache );
@@ -208,7 +211,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     final public function createTemplate(
         string       $name,
         object|array $parameters = [],
-        bool         $cache = true,
+        ?bool        $cache = AUTO,
         bool         $preserveCacheKey = false,
     ) : Template {
         if ( ! $preserveCacheKey ) {
@@ -231,6 +234,109 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         );
     }
 
+    // </editor-fold>
+
+    // <editor-fold desc="Configuration">
+
+    /**
+     * Sets locale for date and number formatting. See PHP intl extension.
+     *
+     * @param ?string $locale
+     *
+     * @return Engine
+     */
+    public function setLocale( ?string $locale ) : static
+    {
+        if ( $locale && ! \extension_loaded( 'intl' ) ) {
+            throw new RuntimeException( "Locate requires the 'intl' extension to be installed." );
+        }
+        $this->locale = $locale;
+        return $this;
+    }
+
+    public function getLocale() : ?string
+    {
+        return $this->locale;
+    }
+
+    public function setPolicy( ?Policy $policy ) : static
+    {
+        $this->policy = $policy;
+        return $this;
+    }
+
+    public function getPolicy( bool $effective = false ) : ?Policy
+    {
+        return ! $effective || $this->sandboxed
+                ? $this->policy
+                : null;
+    }
+
+    public function setContentType( ContentType $type ) : static
+    {
+        $this->contentType = $type;
+        return $this;
+    }
+
+    /**
+     * Sets auto-refresh mode.
+     *
+     * @param bool $state
+     *
+     * @return Engine
+     */
+    public function setAutoRefresh( bool $state = true ) : static
+    {
+        $this->autoRefresh = $state;
+        return $this;
+    }
+
+    /**
+     * Enables declare(strict_types=1) in templates.
+     *
+     * @param bool $state
+     *
+     * @return Engine
+     */
+    public function setStrictTypes( bool $state = true ) : static
+    {
+        $this->strictTypes = $state;
+        return $this;
+    }
+
+    public function setStrictParsing( bool $state = true ) : static
+    {
+        $this->strictParsing = $state;
+        return $this;
+    }
+
+    public function isStrictParsing() : bool
+    {
+        return $this->strictParsing;
+    }
+
+    public function setExceptionHandler( callable $handler ) : static
+    {
+        $this->providers->coreExceptionHandler = $handler;
+        return $this;
+    }
+
+    public function setSandboxMode( bool $state = true ) : static
+    {
+        $this->sandboxed = $state;
+        return $this->addExtension( new SandboxExtension() );
+    }
+
+    final public function enablePhpLinter( ?string $phpBinary ) : static
+    {
+        $this->phpBinary = $phpBinary;
+        return $this;
+    }
+
+    // </editor-fold>
+
+    // <editor-fold desc="Compiler">
+
     /**
      * Compiles template to PHP code.
      *
@@ -239,8 +345,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param string $name
      *
      * @return string
-     * @throws CompileException
-     * @throws SecurityViolationException
+     * @throws CompileException|SecurityViolationException
      */
     final public function compile( string $name ) : string
     {
@@ -323,6 +428,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param string       $name
      *
      * @return string
+     * @throws CompileException
+     * @throws SecurityViolationException
      */
     final protected function generate( TemplateNode $node, string $name ) : string
     {
@@ -335,127 +442,46 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * Compiles template to cache.
+     * @param array|object $parameters
      *
-     * @param string $name
-     *
-     * @throws LogicException
-     * @throws CompileException
-     * @throws SecurityViolationException
+     * @return array
      */
-    final public function warmupCache( string $name ) : void
+    private function templateParameters( object|array $parameters ) : array
     {
-        if ( ! $this->cacheDirectory ) {
-            throw new LogicException( $this::class.' has no cache directory set.' );
+        if ( \is_array( $parameters ) ) {
+            return $parameters;
         }
 
-        $class = $this->getTemplateClass( $name );
-        if ( ! \class_exists( $class, false ) ) {
-            $this->loadTemplate( $name, true );
-        }
-    }
+        $methods = ( new ReflectionClass( $parameters ) )->getMethods( ReflectionMethod::IS_PUBLIC );
 
-    /**
-     * @param string $name
-     * @param bool   $cache
-     *
-     * @throws SecurityViolationException
-     * @throws CompileException
-     */
-    private function loadTemplate( string $name, bool $cache ) : void
-    {
-        if ( ! $this->cacheDirectory || ! $cache ) {
-            $compiled = $this->compile( $name );
-            if ( @eval( \substr( $compiled, 5 ) ) === false ) { // @ is escalated to exception, substr removes <?php
-                throw ( new CompileException( 'Error in template: '.\error_get_last()['message'] ) )
-                    ->setSource( $compiled, "{$name} (compiled)" );
+        foreach ( $methods as $method ) {
+            if ( $method->getAttributes( TemplateFilter::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
+                $this->addFilter( $method->name, [$parameters, $method->name] );
+            }
+            if ( $method->getAttributes( TemplateFunction::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
+                $this->addFunction( $method->name, [$parameters, $method->name] );
             }
 
-            return;
-        }
+            $docblock = $method->getDocComment();
 
-        // Solving atomicity to work everywhere is really pain in the ass.
-        // 1) We want to do as little as possible IO calls on production and also directory and file can be not writable
-        // so on Linux we include the file directly without shared lock, therefore, the file must be created atomically by renaming.
-        // 2) On Windows file cannot be renamed-to while is open (ie by include), so we have to acquire a lock.
-        $cacheFile = $this->getCacheFile( $name );
-        $cacheKey  = $this->autoRefresh ? $this->getCacheSignature( $name ) : null;
-
-        $lock = \defined( 'PHP_WINDOWS_VERSION_BUILD' ) || $this->autoRefresh
-                ? $this->acquireLock( "{$cacheFile}.lock", LOCK_SH )
-                : null;
-
-        if (
-            ! ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) )
-            && ( @include $cacheFile ) !== false // @ - file may not exist
-        ) {
-            return;
-        }
-
-        if ( $lock ) {
-            \flock( $lock, LOCK_UN ); // release shared lock so we can get exclusive
-            \fseek( $lock, 0 );
-        }
-
-        $lock = $this->acquireLock( "{$cacheFile}.lock", LOCK_EX );
-
-        // while waiting for exclusive lock, someone might have already created the cache
-        if ( ! \is_file( $cacheFile ) || ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) ) ) {
-            $compiled = $this->compile( $name );
-            if (
-                \file_put_contents( "{$cacheFile}.tmp", $compiled ) !== \strlen( $compiled )
-                || ! \rename( "{$cacheFile}.tmp", $cacheFile )
-            ) {
-                @\unlink( "{$cacheFile}.tmp" ); // @ - file may not exist
-                throw new RuntimeException( "Unable to create '{$cacheFile}'." );
+            if ( $docblock && \str_contains( $docblock, '@filter' ) ) {
+                throw new TemplateException(
+                    'Annotation @filter is deprecated, use attribute #['.TemplateFilter::class.'] instead.',
+                    __METHOD__,
+                    E_USER_DEPRECATED,
+                );
             }
 
-            \fseek( $lock, 0 );
-            \fwrite( $lock, $cacheKey ?? $this->getCacheSignature( $name ) );
-            \ftruncate( $lock, \ftell( $lock ) );
-
-            if ( \function_exists( 'opcache_invalidate' ) ) {
-                @\opcache_invalidate( $cacheFile, true ); // @ can be restricted
+            if ( $docblock && \str_contains( $docblock, '@function' ) ) {
+                throw new TemplateException(
+                    'Annotation @function is deprecated, use attribute #['.TemplateFunction::class.'] instead.',
+                    __METHOD__,
+                    E_USER_DEPRECATED,
+                );
             }
         }
 
-        if ( ( include $cacheFile ) === false ) {
-            throw new RuntimeException( "Unable to load '{$cacheFile}'." );
-        }
-
-        \flock( $lock, LOCK_UN );
-    }
-
-    /**
-     * @param string $file
-     * @param int    $mode
-     *
-     * @return resource
-     */
-    private function acquireLock( string $file, int $mode )
-    {
-        $dir = \dirname( $file );
-        if ( ! \is_dir( $dir ) && ! @\mkdir( $dir ) && ! \is_dir( $dir ) ) { // @ - dir may already exist
-            throw new RuntimeException( "Unable to create directory '{$dir}'. ".\error_get_last()['message'] );
-        }
-
-        $handle = @\fopen( $file, 'c+' ); // @ is escalated to exception
-        if ( ! $handle ) {
-            throw new RuntimeException( "Unable to create file '{$file}'. ".\error_get_last()['message'] );
-        }
-        if ( ! @\flock( $handle, $mode ) ) { // @ is escalated to exception
-            throw new RuntimeException(
-                'Unable to acquire '.( $mode & LOCK_EX ? 'exclusive'
-                            : 'shared' )." lock on file '{$file}'. ".\error_get_last()['message'],
-            );
-        }
-
-        return $handle;
-    }
-
-    public function getTemplateClass( string $name ) : string
-    {
-        return 'Template_'.$this->getCacheKey( $name );
+        return \array_filter( (array) $parameters, fn( $key ) => $key[0] !== "\0", ARRAY_FILTER_USE_KEY );
     }
 
     /**
@@ -617,174 +643,170 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     {
         return (array) $this->providers;
     }
+    // </editor-fold>
 
-    public function setExceptionHandler( callable $handler ) : static
-    {
-        $this->providers->coreExceptionHandler = $handler;
-        return $this;
-    }
-
-    public function setSandboxMode( bool $state = true ) : static
-    {
-        $this->sandboxed = $state;
-        return $this->addExtension( new SandboxExtension() );
-    }
-
-    public function setPolicy( ?Policy $policy ) : static
-    {
-        $this->policy = $policy;
-        return $this;
-    }
-
-    public function getPolicy( bool $effective = false ) : ?Policy
-    {
-        return ! $effective || $this->sandboxed
-                ? $this->policy
-                : null;
-    }
-
-    public function setContentType( ContentType $type ) : static
-    {
-        $this->contentType = $type;
-        return $this;
-    }
+    // <editor-fold desc="Loader">
 
     /**
-     * Sets auto-refresh mode.
+     * @param null|Autoloader|Loader $loader
      *
-     * @param bool $state
-     *
-     * @return Engine
+     * @return $this
      */
-    public function setAutoRefresh( bool $state = true ) : static
-    {
-        $this->autoRefresh = $state;
-        return $this;
-    }
-
-    /**
-     * Enables declare(strict_types=1) in templates.
-     *
-     * @param bool $state
-     *
-     * @return Engine
-     */
-    public function setStrictTypes( bool $state = true ) : static
-    {
-        $this->strictTypes = $state;
-        return $this;
-    }
-
-    public function setStrictParsing( bool $state = true ) : static
-    {
-        $this->strictParsing = $state;
-        return $this;
-    }
-
-    public function isStrictParsing() : bool
-    {
-        return $this->strictParsing;
-    }
-
-    /**
-     * Sets locale for date and number formatting. See PHP intl extension.
-     *
-     * @param ?string $locale
-     *
-     * @return Engine
-     */
-    public function setLocale( ?string $locale ) : static
-    {
-        if ( $locale && ! \extension_loaded( 'intl' ) ) {
-            throw new RuntimeException( "Locate requires the 'intl' extension to be installed." );
-        }
-        $this->locale = $locale;
-        return $this;
-    }
-
-    public function getLocale() : ?string
-    {
-        return $this->locale;
-    }
-
     public function setLoader( null|Autoloader|Loader $loader ) : static
     {
         $this->loader = $loader;
         return $this;
     }
 
-    public function getLoader() : null|Autoloader|Loader
+    /**
+     * @return Autoloader|Loader
+     */
+    final public function getLoader() : Autoloader|Loader
     {
-        // Auto-select File/String
         return $this->loader ??= new Autoloader(
             $this->templateDirectories,
             $this->preloadedTemplates,
         );
     }
 
-    public function enablePhpLinter( ?string $phpBinary ) : static
-    {
-        $this->phpBinary = $phpBinary;
-        return $this;
+    /**
+     * @param string $name
+     * @param bool   $instantiate
+     * @param ?bool  $cache
+     *
+     * @return class-string<Template>
+     *
+     * @throws CompileException
+     * @throws SecurityViolationException
+     */
+    final public function getTemplateClass(
+        string $name,
+        bool   $instantiate = false,
+        ?bool  $cache = AUTO,
+    ) : string {
+        $class = 'Template_'.$this->getCacheKey( $name );
+
+        if ( $instantiate && ! \class_exists( $class, false ) ) {
+            $this->loadTemplate( $name, $cache );
+        }
+
+        return $class;
     }
 
     /**
-     * @param array|object $parameters
+     * @param string $name
+     * @param bool   $cache
      *
-     * @return array
+     * @throws CompileException|SecurityViolationException
      */
-    private function templateParameters( object|array $parameters ) : array
+    private function loadTemplate( string $name, ?bool $cache ) : void
     {
-        if ( \is_array( $parameters ) ) {
-            return $parameters;
+        if ( ! $this->cacheDirectory || ! $cache ?? $this->cache ) {
+            $compiled = $this->compile( $name );
+            if ( @eval( \substr( $compiled, 5 ) ) === false ) { // @ is escalated to exception, substr removes <?php
+                throw ( new CompileException( 'Error in template: '.\error_get_last()['message'] ) )
+                    ->setSource( $compiled, "{$name} (compiled)" );
+            }
+
+            return;
         }
 
-        $methods = ( new ReflectionClass( $parameters ) )->getMethods( ReflectionMethod::IS_PUBLIC );
+        // Solving atomicity to work everywhere is really pain in the ass.
+        // 1) We want to do as little as possible IO calls on production and also directory and file can be not writable
+        // so on Linux we include the file directly without shared lock, therefore, the file must be created atomically by renaming.
+        // 2) On Windows file cannot be renamed-to while is open (ie by include), so we have to acquire a lock.
+        $cacheFile = $this->getCacheFile( $name );
+        $cacheKey  = $this->autoRefresh ? $this->getCacheSignature( $name ) : null;
 
-        foreach ( $methods as $method ) {
-            if ( $method->getAttributes( TemplateFilter::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
-                $this->addFilter( $method->name, [$parameters, $method->name] );
+        $lock = \defined( 'PHP_WINDOWS_VERSION_BUILD' ) || $this->autoRefresh
+                ? $this->acquireLock( "{$cacheFile}.lock", LOCK_SH )
+                : null;
+
+        if (
+            ! ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) )
+            && ( @include $cacheFile ) !== false // @ - file may not exist
+        ) {
+            return;
+        }
+
+        if ( $lock ) {
+            \flock( $lock, LOCK_UN ); // release shared lock so we can get exclusive
+            \fseek( $lock, 0 );
+        }
+
+        $lock = $this->acquireLock( "{$cacheFile}.lock", LOCK_EX );
+
+        // while waiting for exclusive lock, someone might have already created the cache
+        if ( ! \is_file( $cacheFile ) || ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) ) ) {
+            $compiled = $this->compile( $name );
+            if (
+                \file_put_contents( "{$cacheFile}.tmp", $compiled ) !== \strlen( $compiled )
+                || ! \rename( "{$cacheFile}.tmp", $cacheFile )
+            ) {
+                @\unlink( "{$cacheFile}.tmp" ); // @ - file may not exist
+                throw new RuntimeException( "Unable to create '{$cacheFile}'." );
             }
-            if ( $method->getAttributes( TemplateFunction::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
-                $this->addFunction( $method->name, [$parameters, $method->name] );
-            }
 
-            $docblock = $method->getDocComment();
+            \fseek( $lock, 0 );
+            \fwrite( $lock, $cacheKey ?? $this->getCacheSignature( $name ) );
+            \ftruncate( $lock, \ftell( $lock ) );
 
-            if ( $docblock && \str_contains( $docblock, '@filter' ) ) {
-                throw new TemplateException(
-                    'Annotation @filter is deprecated, use attribute #['.TemplateFilter::class.'] instead.',
-                    __METHOD__,
-                    E_USER_DEPRECATED,
-                );
-            }
-
-            if ( $docblock && \str_contains( $docblock, '@function' ) ) {
-                throw new TemplateException(
-                    'Annotation @function is deprecated, use attribute #['.TemplateFunction::class.'] instead.',
-                    __METHOD__,
-                    E_USER_DEPRECATED,
-                );
+            if ( \function_exists( 'opcache_invalidate' ) ) {
+                @\opcache_invalidate( $cacheFile, true ); // @ can be restricted
             }
         }
 
-        return \array_filter( (array) $parameters, fn( $key ) => $key[0] !== "\0", ARRAY_FILTER_USE_KEY );
+        if ( ( include $cacheFile ) === false ) {
+            throw new RuntimeException( "Unable to load '{$cacheFile}'." );
+        }
+
+        \flock( $lock, LOCK_UN );
     }
 
-    public function __get( string $name )
+    /**
+     * @param string $file
+     * @param int    $mode
+     *
+     * @return resource
+     */
+    private function acquireLock( string $file, int $mode )
     {
-        if ( $name === 'onCompile' ) {
-            $trace = \debug_backtrace( 0 )[0];
-            $loc   = isset( $trace['file'], $trace['line'] )
-                    ? ' (in '.$trace['file'].' on '.$trace['line'].')'
-                    : '';
-            throw new LogicException( 'You use Latte 3 together with the code designed for Latte 2'.$loc );
+        $dir = \dirname( $file );
+        if ( ! \is_dir( $dir ) && ! @\mkdir( $dir ) && ! \is_dir( $dir ) ) { // @ - dir may already exist
+            throw new RuntimeException( "Unable to create directory '{$dir}'. ".\error_get_last()['message'] );
         }
+
+        $handle = @\fopen( $file, 'c+' ); // @ is escalated to exception
+        if ( ! $handle ) {
+            throw new RuntimeException( "Unable to create file '{$file}'. ".\error_get_last()['message'] );
+        }
+        if ( ! @\flock( $handle, $mode ) ) { // @ is escalated to exception
+            throw new RuntimeException(
+                'Unable to acquire '.( $mode & LOCK_EX ? 'exclusive'
+                            : 'shared' )." lock on file '{$file}'. ".\error_get_last()['message'],
+            );
+        }
+
+        return $handle;
     }
 
-    // :: Cache
+    // </editor-fold>
 
     // ? Do not remove the old cached template, so it can be used as fallback on Exception
+    // <editor-fold desc="Cache">
+
+    /**
+     * Sets path to temporary directory.
+     *
+     * @param ?string $path
+     *
+     * @return Engine
+     */
+    final public function setCacheDirectory( ?string $path ) : self
+    {
+        $this->cacheDirectory = $path ? normalize_path( $path ) : null;
+        return $this;
+    }
 
     final public function getCacheFile( string $name ) : string
     {
@@ -797,6 +819,34 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             $path .= '--';
         }
         return $path.$this->getCacheKey( $name ).'.php';
+    }
+
+    /**
+     * Compiles template to cache.
+     *
+     * @param string $name
+     *
+     * @return bool
+     */
+    final public function warmupCache( string $name ) : bool
+    {
+        if ( ! $this->cacheDirectory ) {
+            throw new LogicException( $this::class.' has no cache directory set.' );
+        }
+
+        try {
+            $this->getTemplateClass( $name, true, true );
+            return true;
+        }
+        catch ( Exception $exception ) {
+            if ( $this->logger ) {
+                $this->logger->error( $exception->getMessage() );
+            }
+            else {
+                throw new TemplateException( $exception->getMessage(), __METHOD__ );
+            }
+            return false;
+        }
     }
 
     final public function clearTemplateCache() : self
@@ -876,4 +926,5 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
         return $this->cacheKey.key_hash( 'xxh32', $this->getLoader()->getUniqueId( $name ) );
     }
+    // </editor-fold>)
 }
