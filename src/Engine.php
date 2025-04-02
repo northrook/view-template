@@ -82,8 +82,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      */
     public function __construct(
         private ?string            $cacheDirectory = null,
-        protected readonly array   $templateDirectories = [],
-        protected readonly array   $preloadedTemplates = [],
+        protected array            $templateDirectories = [],
+        protected array            $preloadedTemplates = [],
         private ?string            $locale = null,
         private readonly bool      $preformatter = false,
         protected bool             $cache = true,
@@ -403,7 +403,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @param TemplateNode $node
      */
-    final protected function applyPasses( TemplateNode &$node ) : void
+    final public function applyPasses( TemplateNode &$node ) : void
     {
         $passes = [];
 
@@ -429,7 +429,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @throws CompileException
      * @throws SecurityViolationException
      */
-    final protected function generate( TemplateNode $node, string $name ) : string
+    final public function generate( TemplateNode $node, string $name ) : string
     {
         return ( new TemplateGenerator( $this->profiler ) )->generate(
             $node,
@@ -665,6 +665,17 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             $this->templateDirectories,
             $this->preloadedTemplates,
         );
+    }
+
+    final public function addTemplateDirectory( string $directory, null|int|string $key = null ) : self
+    {
+        if ( $key ) {
+            $this->templateDirectories[$key] ??= $directory;
+        }
+        else {
+            $this->templateDirectories[] = $directory;
+        }
+        return $this;
     }
 
     /**
