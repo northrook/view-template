@@ -58,7 +58,7 @@ abstract class Component
 
     abstract protected function getTemplateParameters() : array|object;
 
-    public function getComponentNode() : ComponentNode
+    public function getComponentNode( ?Position $position = null ) : ComponentNode
     {
         self::$max_iterations++;
         $engine = $this->getEngine();
@@ -73,9 +73,10 @@ abstract class Component
                     $this->getTemplateParameters(),
                 ),
             );
-            $ast = $engine->parse( $template );
-            // $node     = $ast->main;
-            return new ComponentNode( ...$ast->main->children );
+            $ast            = $engine->parse( $template );
+            $node           = $ast->main;
+            $node->position = $position;
+            return new ComponentNode( ...$node->children );
         }
         catch ( Throwable $e ) {
             dd( $this, ...\get_defined_vars() );
