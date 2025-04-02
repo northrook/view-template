@@ -10,7 +10,7 @@ use Core\Profiler\ClerkProfiler;
 use Core\View\Attribute\ViewComponent;
 use Core\View\Element;
 use Core\View\Element\Attributes;
-use Core\View\Template\Compiler\{Node, Position};
+use Core\View\Template\Compiler\{Nodes\AreaNode, Nodes\ComponentNode, Position};
 use Core\View\Template\Compiler\Nodes\FragmentNode;
 use Core\View\Template\Compiler\Nodes\Html\ElementNode;
 use Core\View\Template\Component\Node\StaticNode;
@@ -19,7 +19,9 @@ use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
 use InvalidArgumentException;
-use function Support\slug;
+use function Support\{normalize_path, slug};
+use LogicException;
+use Throwable;
 
 abstract class Component
 {
@@ -27,6 +29,12 @@ abstract class Component
 
     /** @var ?string Manually define a name for this component */
     protected const ?string NAME = null;
+
+    protected const ?string TEMPLATE_DIRECTORY = null;
+
+    // ::DEBUG
+    public static int $max_iterations = 0;
+    // ::DEBUG
 
     private ?Engine $engine = null;
 
@@ -43,9 +51,36 @@ abstract class Component
 
     public readonly Attributes $attributes;
 
-    abstract public function render() : string;
+    public function render() : string
+    {
+        return $this->getComponentNode()->simplify()->print();
+    }
 
-    abstract protected function getNode() : Node;
+    abstract protected function getTemplateParameters() : array|object;
+
+    public function getComponentNode() : ComponentNode
+    {
+        self::$max_iterations++;
+        $engine = $this->getEngine();
+
+        if ( self::$max_iterations > 5 ) {
+            dd( \get_defined_vars(), self::$max_iterations );
+        }
+        try {
+            $template = \trim(
+                $engine->renderToString(
+                    $this->getTemplatePath(),
+                    $this->getTemplateParameters(),
+                ),
+            );
+            $ast = $engine->parse( $template );
+            // $node     = $ast->main;
+            return new ComponentNode( ...$ast->main->children );
+        }
+        catch ( Throwable $e ) {
+            dd( $this, ...\get_defined_vars() );
+        }
+    }
 
     /**
      * Process arguments passed to the {@see self::create()} method.
@@ -65,7 +100,7 @@ abstract class Component
     public function getElementNode(
         ?Position    $position = null,
         ?ElementNode $parent = null,
-    ) : ElementNode {
+    ) : AreaNode {
         $view = new Element();
 
         $element = NewNode::element(
@@ -99,7 +134,7 @@ abstract class Component
         $this->prepareArguments( $arguments );
         $this->uniqueID = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
 
-        dump( $this, ...\get_defined_vars() );
+        // dump( $this, ...\get_defined_vars() );
         return $this;
     }
 
@@ -164,9 +199,37 @@ abstract class Component
         return $viewAttribute;
     }
 
-    final protected function setEngine( Engine $engine ) : void
+    /**
+     * @param ?string $filename
+     *
+     * @return string
+     */
+    final protected function getTemplatePath( ?string $filename = null ) : string
     {
-        $this->engine = $engine;
+        $filename ??= "{$this::componentName()}.latte";
+
+        $path = normalize_path(
+            self::TEMPLATE_DIRECTORY ?? ( new ReflectionClass( static::class ) )->getFileName(),
+        );
+
+        if ( \str_ends_with( $path, '.php' ) ) {
+            $path = \strrchr( $path, DIR_SEP, true );
+        }
+
+        if ( \file_exists( "{$path}/{$filename}" ) ) {
+            return "{$path}/{$filename}";
+        }
+
+        $templateDirectory = ( \strrchr( $path, DIR_SEP.'src', true ) ?: $path ).DIR_SEP.'templates';
+
+        if ( \file_exists( "{$templateDirectory}/component/{$filename}" ) ) {
+            $this->getEngine()->addTemplateDirectory( $templateDirectory );
+            return "component/{$filename}";
+        }
+
+        throw new LogicException(
+            'Unable to resolve template directory for component '.static::class.'.',
+        );
     }
 
     final protected function getEngine() : Engine

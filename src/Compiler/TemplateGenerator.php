@@ -89,7 +89,7 @@ final class TemplateGenerator
         ?string      $templateName = null,
         bool         $strictMode = false,
     ) : string {
-        $profiler = $this->profiler->event( "template.generate.{$templateName}" );
+        $profiler = $this->profiler?->event( "template.generate.{$templateName}" );
 
         $context   = new PrintContext( $node->contentType );
         $generator = new PhpGenerator(

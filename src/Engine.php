@@ -11,8 +11,8 @@ namespace Core\View\Template;
 
 use Core\View\Template\Engine\{Autoloader, PreformatterExtension};
 use Core\Interface\LazyService;
+use Core\Profiler\{ClerkProfiler};
 use Core\Profiler\Interface\Profilable;
-use Core\Profiler\StopwatchProfiler;
 use Core\View\Template\Sandbox\SandboxExtension;
 use Exception;
 use Latte\Loader;
@@ -40,8 +40,6 @@ use const Support\AUTO;
 
 class Engine implements LazyService, Profilable, LoggerAwareInterface
 {
-    use StopwatchProfiler;
-
     private ContentType $contentType = ContentType::HTML;
 
     private null|Autoloader|Loader $loader = null;
@@ -78,6 +76,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param null|string             $locale
      * @param bool                    $preformatter
      * @param bool                    $cache
+     * @param ?ClerkProfiler          $profiler
      * @param ?LoggerInterface        $logger
      */
     public function __construct(
@@ -87,6 +86,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         private ?string            $locale = null,
         private readonly bool      $preformatter = false,
         protected bool             $cache = true,
+        protected ?ClerkProfiler   $profiler = null,
         protected ?LoggerInterface $logger = null,
     ) {
         $this->setCacheDirectory( $cacheDirectory );
@@ -107,9 +107,9 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $this->logger = $logger;
     }
 
-    final public function setProfiler( ?Stopwatch $stopwatch, ?string $category = 'View' ) : void
+    final public function setProfiler( null|Stopwatch|ClerkProfiler $stopwatch, ?string $category = 'View' ) : void
     {
-        $this->assignProfiler( $stopwatch, $category );
+        $this->profiler = ClerkProfiler::from( $stopwatch, $category ?? $this::class );
     }
 
     // </editor-fold>
@@ -431,7 +431,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      */
     final public function generate( TemplateNode $node, string $name ) : string
     {
-        return ( new TemplateGenerator( $this->profiler ) )->generate(
+        return ( new TemplateGenerator( $this->profiler ?? null ) )->generate(
             $node,
             $this->getTemplateClass( $name ),
             $name,
@@ -900,7 +900,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      */
     final protected function getCacheKey( string $name ) : string
     {
-        if ( ! $this->cacheKey ) {
+        if ( ! isset( $this->cacheKey ) ) {
             $fimemtime = 0;
             $signature = [
                 $this->contentType,
