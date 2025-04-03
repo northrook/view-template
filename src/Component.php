@@ -8,20 +8,15 @@ use BadMethodCallException;
 use Cache\CachePoolTrait;
 use Core\Profiler\ClerkProfiler;
 use Core\View\Attribute\ViewComponent;
-use Core\View\Element;
 use Core\View\Element\Attributes;
-use Core\View\Template\Compiler\{Nodes\AreaNode, Nodes\ComponentNode, Position};
-use Core\View\Template\Compiler\Nodes\FragmentNode;
+use Core\View\Template\Compiler\{Nodes\ComponentNode};
 use Core\View\Template\Compiler\Nodes\Html\ElementNode;
-use Core\View\Template\Component\Node\StaticNode;
-use Core\View\Template\Support\NewNode;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
 use InvalidArgumentException;
 use function Support\{normalize_path, slug};
 use LogicException;
-use Throwable;
 
 abstract class Component
 {
@@ -58,29 +53,60 @@ abstract class Component
 
     abstract protected function getTemplateParameters() : array|object;
 
-    public function getComponentNode( ?Position $position = null ) : ComponentNode
+    final public function getString() : string
     {
-        self::$max_iterations++;
-        $engine = $this->getEngine();
+        return \trim(
+            $this->getEngine()->renderToString(
+                $this->getTemplatePath(),
+                $this->getTemplateParameters(),
+                preserveCacheKey : true,
+            ),
+        );
+    }
 
-        if ( self::$max_iterations > 5 ) {
+    final public function getComponentNode( ?ElementNode $node = null ) : ComponentNode
+    {
+        if ( self::$max_iterations++ > 5 ) {
             dd( \get_defined_vars(), self::$max_iterations );
         }
-        try {
-            $template = \trim(
-                $engine->renderToString(
-                    $this->getTemplatePath(),
-                    $this->getTemplateParameters(),
-                ),
-            );
-            $ast            = $engine->parse( $template );
-            $node           = $ast->main;
-            $node->position = $position;
-            return new ComponentNode( ...$node->children );
+
+        $cid = $this->uniqueID;
+        if ( $node->position ) {
+            $cid .= "-{$node->position->getId()}";
         }
-        catch ( Throwable $e ) {
-            dd( $this, ...\get_defined_vars() );
-        }
+        $engine = $this->getEngine();
+
+        dump( ['engine hasRendered' => $engine->hasRendered( $cid )] );
+
+        $template = $this->getString();
+
+        $id       = $this->uniqueID;
+        $tag      = $node->name;
+        $position = $node->position;
+
+        $template = (string) \preg_replace_callback(
+            pattern  : "/(<{$tag})(.*?>)/m",
+            callback : static function( array $_ ) use ( $id ) : string {
+                // : $_[0] full '<$tag with="attributes">'
+                // : $_[1] opening '<$tag'
+                // : $_[2] remaining ' with="attributes">'
+
+                // Bail early on existing component-id attribute
+                if ( \str_contains( $_[0], ' component-id="' ) ) {
+                    return $_[0];
+                }
+
+                return $_[1].' component-id="'.$id.'"'
+                       .( $_[2][0] === ' ' ? $_[2] : " {$_[2]}" );
+            },
+            subject  : $template,
+            flags    : PREG_UNMATCHED_AS_NULL,
+        );
+
+        $ast            = $engine->parse( $template );
+        $node           = $ast->main;
+        $node->position = $position;
+        return new ComponentNode( ...$node->children );
     }
 
     /**
@@ -91,32 +117,6 @@ abstract class Component
      * @return void
      */
     protected function prepareArguments( array &$arguments ) : void {}
-
-    /**
-     * @param null|Position    $position
-     * @param null|ElementNode $parent
-     *
-     * @return ElementNode
-     */
-    public function getElementNode(
-        ?Position    $position = null,
-        ?ElementNode $parent = null,
-    ) : AreaNode {
-        $view = new Element();
-
-        $element = NewNode::element(
-            name       : $view->tag->getTagName(),
-            position   : $position,
-            parent     : $parent,
-            attributes : $view->attributes,
-        );
-
-        \assert( $element->content instanceof FragmentNode );
-
-        $element->content->append( new StaticNode( $view->content->getString() ) );
-
-        return $element;
-    }
 
     /**
      * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string} $arguments

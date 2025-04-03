@@ -2,13 +2,16 @@
 
 namespace Core\View\Template\Exception;
 
+use Core\View\Template\Support\PositionAwareException;
 use RuntimeException;
 use Throwable;
 
 class TemplateException extends RuntimeException
 {
+    use PositionAwareException;
+
     public function __construct(
-        string                 $message = '',
+        string                 $message,
         public readonly string $caller,
         int                    $code = E_RECOVERABLE_ERROR,
         ?Throwable             $previous = null,

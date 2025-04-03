@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler;
 
-use Core\View\Template\{
-    ContentType,
+use Core\View\Template\{ContentType,
     Exception\CompileException,
     Exception\SecurityViolationException,
+    Exception\TemplateException,
     Extension,
-    Support\Helpers,
+    Support\Helpers
 };
 use Core\View\Template\Compiler\Nodes\{
     AreaNode,
@@ -342,17 +342,21 @@ final class TemplateParser
         );
         $openToken = $stream->consume( Token::Latte_TagOpen );
         $this->lexer->pushState( TemplateLexer::StateLatteTag );
-        $tag = new Tag(
-            position    : $openToken->position,
-            closing     : $closing = (bool) $stream->tryConsume( Token::Slash ),
-            name        : $stream->tryConsume( Token::Latte_Name )?->text ?? ( $closing ? '' : '=' ),
+        $closing = (bool) $stream->tryConsume( Token::Slash );
+        $void    = (bool) $stream->tryConsume( Token::Slash );
+        $name    = $stream->tryConsume( Token::Latte_Name )?->text ?? ( $closing ? '' : '=' );
+        $tag     = new Tag(
+            name        : $name,
             tokens      : $this->consumeTag(),
-            void        : (bool) $stream->tryConsume( Token::Slash ),
+            position    : $openToken->position,
+            void        : $void,
+            closing     : $closing,
             inHead      : $this->inHead,
             inTag       : $inTag,
             htmlElement : $this->html->getElement(),
         );
-        $stream->tryConsume( Token::Latte_TagClose ) || $stream->throwUnexpectedException(
+        $stream->tryConsume( Token::Latte_TagClose )
+        || $stream->throwUnexpectedException(
             [Token::Latte_TagClose],
             addendum : " started {$openToken->position}",
         );
@@ -378,7 +382,6 @@ final class TemplateParser
      * @param array<string, callable(Tag, self): (Generator|Node|void)|stdClass> $parsers
      *
      * @return TemplateParser
-     * @throws ReflectionException
      */
     public function addTags( array $parsers ) : static
     {
@@ -389,8 +392,13 @@ final class TemplateParser
             }
             else {
                 $this->tagParsers[$name] = $info->subject;
-                if ( $info->generator = Helpers::toReflection( $info->subject )->isGenerator() ) {
-                    $this->attrParsersInfo[$name] = $info;
+                try {
+                    if ( $info->generator = Helpers::toReflection( $info->subject )->isGenerator() ) {
+                        $this->attrParsersInfo[$name] = $info;
+                    }
+                }
+                catch ( ReflectionException $e ) {
+                    throw new TemplateException( $e->getMessage(), __METHOD__, previous : $e );
                 }
             }
         }
@@ -485,7 +493,7 @@ final class TemplateParser
      */
     public function checkBlockIsUnique( Block $block ) : void
     {
-        if ( $block->isDynamic() || ! \preg_match( '#^[a-z]#iD', $name = (string) $block->name->value ) ) {
+        if ( $block->isDynamic() || ! \preg_match( '#^[a-z]#i', $name = (string) $block->name->value ) ) {
             throw new CompileException(
                 \ucfirst( $block->tag->name )." name must start with letter a-z, '{$name}' given.",
                 $block->tag->position,

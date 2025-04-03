@@ -23,8 +23,8 @@ final class Autoloader
      * @param array<string,string> $templates
      */
     public function __construct(
-        private readonly array $directories = [],
-        private array          $templates = [],
+        protected array & $directories = [],
+        protected array $templates = [],
     ) {}
 
     public function getContent( string $name ) : string

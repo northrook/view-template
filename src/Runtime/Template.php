@@ -9,7 +9,13 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Runtime;
 
-use Core\View\Template\{ContentType, Engine, Exception\TemplateException, Support\Helpers, Exception\RuntimeException};
+use Core\View\Template\{ContentType,
+    Engine,
+    Exception\CompileException,
+    Exception\TemplateException,
+    Support\Helpers,
+    Exception\RuntimeException
+};
 use Core\View\Template\Compiler\Escaper;
 use Closure;
 use Throwable;
@@ -77,8 +83,8 @@ abstract class Template
         $this->engine     = $engine;
         $this->parameters = $params;
         $this->filters    = $filters;
-        $this->name    = $name;
-        $this->global  = $providers;
+        $this->name       = $name;
+        $this->global     = $providers;
         $this->initBlockLayer( self::LAYER_TOP );
         $this->initBlockLayer( self::LAYER_LOCAL );
         $this->initBlockLayer( self::LAYER_SNIPPET );
@@ -179,8 +185,7 @@ abstract class Template
      * @param string $referenceType
      *
      * @return Template
-     * @throws \Core\View\Template\Exception\CompileException
-     * @throws \Core\View\Template\Exception\SecurityViolationException
+     * @throws CompileException
      */
     final public function createTemplate( string $name, array $params, string $referenceType ) : self
     {
@@ -237,9 +242,7 @@ abstract class Template
     /**
      * @param array<array-key, mixed> $__args__
      */
-    public function main( array $__args__ ) : void {}
-
-    // blocks ****************d*g
+    abstract public function main( array $__args__ ) : void;
 
     /**
      * Renders block.
@@ -296,6 +299,28 @@ abstract class Template
         }
         $function( $params );
         \prev( $block->functions );
+    }
+
+    /**
+     * Captures output to string.
+     *
+     * @internal
+     *
+     * @param callable $function
+     *
+     * @return string
+     */
+    final public function capture( callable $function ) : string
+    {
+        try {
+            \ob_start( fn() => '' );
+            $function();
+            return \ob_get_clean();
+        }
+        catch ( Throwable $ex ) {
+            \ob_end_clean();
+            throw new TemplateException( $ex->getMessage(), __METHOD__, previous : $ex );
+        }
     }
 
     /**
@@ -364,29 +389,6 @@ abstract class Template
                 ),
                 __METHOD__,
             );
-        }
-    }
-
-    /**
-     * Captures output to string.
-     *
-     * @internal
-     *
-     * @param callable $function
-     *
-     * @return string
-     * @throws Throwable
-     */
-    public function capture( callable $function ) : string
-    {
-        try {
-            \ob_start( fn() => '' );
-            $function();
-            return \ob_get_clean();
-        }
-        catch ( Throwable $e ) {
-            \ob_end_clean();
-            throw $e;
         }
     }
 

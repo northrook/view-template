@@ -21,10 +21,10 @@ use Symfony\Component\Stopwatch\Stopwatch;
 use Core\View\Template\Compiler\{TemplateFilter};
 use Core\View\Template\Compiler\Nodes\TemplateNode;
 use Core\View\Template\Engine\CoreExtension;
-use Core\View\Template\Exception\{CompileException, RuntimeException, SecurityViolationException, TemplateException};
+use Core\View\Template\Exception\{CompileException, RuntimeException, TemplateException};
 use Core\View\Template\Support\Helpers;
 use Core\View\Template\Runtime\{FilterExecutor, FunctionExecutor, Template};
-use Core\View\Template\Compiler\{PhpHelpers, TemplateFunction, TemplateGenerator, TemplateParser};
+use Core\View\Template\Compiler\{TemplateFunction, TemplateGenerator, TemplateParser};
 use Core\View\Template\Interface\Policy;
 use LogicException;
 use ReflectionClass;
@@ -50,6 +50,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     /** @var Extension[] */
     private array $extensions = [];
+
+    private array $rendered = [];
 
     private stdClass $providers;
 
@@ -145,9 +147,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param bool         $cache      [true]
      *
      * @return string
-     * @throws CompileException
-     * @throws SecurityViolationException
-     * @throws Throwable
      */
     public function render(
         string       $template,
@@ -171,25 +170,35 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param array|object $parameters
      * @param ?string      $block
      * @param bool         $cache
+     * @param bool         $preserveCacheKey
      *
      * @return string
-     * @throws CompileException
-     * @throws Throwable
      */
     public function renderToString(
         string       $name,
         object|array $parameters = [],
         ?string      $block = null,
         ?bool        $cache = AUTO,
+        bool         $preserveCacheKey = false,
     ) : string {
         $profiler = $this->profiler?->event( 'render' );
-        $template = $this->createTemplate( $name, $parameters, $cache );
+        $template = $this->createTemplate( $name, $parameters, $cache, $preserveCacheKey );
 
         $template->global->coreCaptured = true;
 
         $string = $template->capture( fn() => $template->render( $block ) );
         $profiler?->stop();
         return $string;
+    }
+
+    final public function hasRendered( string $uniqueRenderId ) : bool
+    {
+        if ( \array_key_exists( $uniqueRenderId, $this->rendered ) ) {
+            return true;
+        }
+
+        $this->rendered[$uniqueRenderId] = true;
+        return false;
     }
 
     /**
@@ -203,8 +212,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param bool         $preserveCacheKey
      *
      * @return Template
-     * @throws CompileException
-     * @throws SecurityViolationException
      */
     final public function createTemplate(
         string       $name,
@@ -343,7 +350,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param string $name
      *
      * @return string
-     * @throws CompileException|SecurityViolationException
      */
     final public function compile( string $name ) : string
     {
@@ -358,16 +364,21 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             $this->applyPasses( $node );
             $compiled = $this->generate( $node, $name );
         }
-        catch ( Throwable $e ) {
-            if ( ! $e instanceof CompileException && ! $e instanceof SecurityViolationException ) {
-                $e = new CompileException( "Thrown exception '{$e->getMessage()}'", previous : $e );
+        catch ( Throwable $exception ) {
+            if ( ! $exception instanceof TemplateException ) {
+                $exception = new TemplateException(
+                    "Thrown exception '{$exception->getMessage()}'",
+                    __METHOD__,
+                    previous : $exception,
+                );
             }
 
-            throw $e->setSource( $template, $name );
+            throw $exception->setSource( $template, $name );
         }
 
         if ( $this->phpBinary ) {
-            PhpHelpers::checkCode( $this->phpBinary, $compiled, "(compiled {$name})" );
+            throw new \RuntimeException( 'TODO: Linting not yet implemented.' );
+            // PhpHelpers::checkCode( $this->phpBinary, $compiled, "(compiled {$name})" );
         }
 
         return $compiled;
@@ -380,7 +391,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @return TemplateNode
      * @throws CompileException
-     * @throws ReflectionException
      */
     final public function parse( string $template ) : TemplateNode
     {
@@ -426,8 +436,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param string       $name
      *
      * @return string
-     * @throws CompileException
-     * @throws SecurityViolationException
      */
     final public function generate( TemplateNode $node, string $name ) : string
     {
@@ -684,9 +692,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      * @param ?bool  $cache
      *
      * @return class-string<Template>
-     *
-     * @throws CompileException
-     * @throws SecurityViolationException
      */
     final public function getTemplateClass(
         string $name,
@@ -705,18 +710,18 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * @param string $name
      * @param bool   $cache
-     *
-     * @throws CompileException|SecurityViolationException
      */
     private function loadTemplate( string $name, ?bool $cache ) : void
     {
         if ( ! $this->cacheDirectory || ! $cache ?? $this->cache ) {
             $compiled = $this->compile( $name );
-            if ( @eval( \substr( $compiled, 5 ) ) === false ) { // @ is escalated to exception, substr removes <?php
-                throw ( new CompileException( 'Error in template: '.\error_get_last()['message'] ) )
-                    ->setSource( $compiled, "{$name} (compiled)" );
+            // @escalate to exception, remove <?php
+            if ( @eval( \substr( $compiled, 5 ) ) === false ) {
+                throw ( new TemplateException(
+                    'Error in template: '.\error_get_last()['message'],
+                    __METHOD__,
+                ) )->setSource( $compiled, "{$name} (compiled)" );
             }
-
             return;
         }
 

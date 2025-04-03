@@ -7,7 +7,7 @@ use Throwable;
 use Exception;
 
 /**
- * The exception occurred during Latte compilation.
+ * The exception occurred during Template compilation.
  */
 class CompileException extends Exception
 {

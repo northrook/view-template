@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template;
 
+use Core\View\Template\Compiler\Nodes\TemplateNode;
+use Core\View\Template\Compiler\NodeTraverser;
 use Core\View\Template\Runtime\Template;
 use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use stdClass;
