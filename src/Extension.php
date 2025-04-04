@@ -16,7 +16,7 @@ use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use stdClass;
 
 /**
- * Latte extension.
+ * View Template {@see Engine} extension.
  */
 abstract class Extension implements LoggerAwareInterface
 {
@@ -40,11 +40,19 @@ abstract class Extension implements LoggerAwareInterface
     /**
      * Returns a list of parsers for Latte tags.
      *
-     * @return array<string, callable>
+     * @return array<array-key, callable(TemplateNode):void>
      */
-    public function getTags() : array
+    public function getPasses() : array
     {
         return [];
+    }
+
+    final protected function traverse(
+        TemplateNode $template,
+        ?callable    $enter = null,
+        ?callable    $leave = null,
+    ) : void {
+        ( new NodeTraverser() )->traverse( $template, $enter, $leave );
     }
 
     /**
@@ -52,7 +60,7 @@ abstract class Extension implements LoggerAwareInterface
      *
      * @return array<string, callable>
      */
-    public function getPasses() : array
+    public function getTags() : array
     {
         return [];
     }
