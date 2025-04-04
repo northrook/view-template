@@ -51,14 +51,12 @@ abstract class Component
         return $this->getComponentNode()->simplify()->print();
     }
 
-    abstract protected function getTemplateParameters() : array|object;
-
-    final public function getString() : string
+    public function getString() : string
     {
         return \trim(
             $this->getEngine()->renderToString(
                 $this->getTemplatePath(),
-                $this->getTemplateParameters(),
+                $this->getParameters(),
                 preserveCacheKey : true,
             ),
         );
@@ -153,7 +151,7 @@ abstract class Component
         $this->assignCacheAdapter(
             adapter    : $cache,
             prefix     : slug( 'component.'.self::componentName(), '.' ),
-            defer      : $this->settings['asset.cache.defer']      ?? true,    // defer save by default
+            defer      : $this->settings['asset.cache.defer']      ?? true,         // defer save by default
             expiration : $this->settings['asset.cache.expiration'] ?? 14_400,  // 4 hours
         );
 
@@ -236,6 +234,16 @@ abstract class Component
     final protected function getEngine() : Engine
     {
         return $this->engine ??= new Engine( cache : false );
+    }
+
+    protected function getTemplate() : string
+    {
+        return $this->getTemplatePath();
+    }
+
+    protected function getParameters() : array|object
+    {
+        return $this;
     }
 
     private function componentUniqueID( string $set ) : string
