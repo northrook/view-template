@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Runtime;
 
+use Stringable;
+
 /**
  * HTML literal.
  */
-class Html implements HtmlStringable
+class Html implements Stringable
 {
     private string $value;
 

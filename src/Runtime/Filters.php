@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Runtime;
 
+use Stringable;
+
 use Core\View\Template\{ContentType, Exception\RuntimeException};
 use Core\View\Template\Compiler\{Escaper, TemplateLexer};
 
@@ -47,7 +49,7 @@ class Filters
      */
     public static function escapeHtmlText( mixed $s ) : string
     {
-        if ( $s instanceof HtmlStringable ) {
+        if ( $s instanceof Stringable ) {
             return $s->__toString();
         }
 
@@ -65,7 +67,7 @@ class Filters
      */
     public static function escapeHtmlAttr( mixed $s, bool $double = true ) : string
     {
-        $double = $double && $s instanceof HtmlStringable ? false : $double;
+        $double = $double && $s instanceof Stringable ? false : $double;
         $s      = (string) $s;
         if ( \str_contains( $s, '`' ) && \strpbrk( $s, ' <>"\'' ) === false ) {
             $s .= ' '; // protection against innerHTML mXSS vulnerability nette/nette#1496
@@ -124,7 +126,7 @@ class Filters
      */
     public static function escapeHtmlRawTextHtml( mixed $s ) : string
     {
-        if ( $s instanceof HtmlStringable ) {
+        if ( $s instanceof Stringable ) {
             return self::convertHtmlToHtmlRawText( $s->__toString() );
         }
 
@@ -152,7 +154,7 @@ class Filters
      */
     public static function escapeXml( mixed $s ) : string
     {
-        if ( $s instanceof HtmlStringable ) {
+        if ( $s instanceof Stringable ) {
             return $s->__toString();
         }
 
@@ -202,7 +204,7 @@ class Filters
      */
     public static function escapeJs( mixed $s ) : string
     {
-        if ( $s instanceof HtmlStringable ) {
+        if ( $s instanceof Stringable ) {
             $s = $s->__toString();
         }
 
@@ -322,7 +324,7 @@ class Filters
      */
     public static function safeUrl( mixed $s ) : string
     {
-        $s = $s instanceof HtmlStringable
+        $s = $s instanceof Stringable
                 ? self::convertHtmlToText( (string) $s )
                 : (string) $s;
 

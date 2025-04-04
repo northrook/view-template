@@ -15,7 +15,7 @@ use Core\View\Template\Extension;
 /**
  * Raw PHP in {php ...}
  */
-final class RawPhpExtension extends \Core\View\Template\Extension
+final class RawPhpExtension extends Extension
 {
     public function getTags() : array
     {

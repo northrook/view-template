@@ -12,6 +12,7 @@ namespace Core\View\Template\Runtime;
 use AllowDynamicProperties;
 use LogicException;
 use ReflectionException;
+use Stringable;
 
 use Core\View\Template\{ContentType, Support\Helpers, Exception\RuntimeException};
 
@@ -88,7 +89,7 @@ class FilterExecutor
      */
     public function filterContent( string $name, FilterInfo $info, mixed ...$args ) : mixed
     {
-        if ( $info->contentType === ContentType::HTML && $args[ 0] instanceof HtmlStringable ) {
+        if ( $info->contentType === ContentType::HTML && $args[0] instanceof Stringable ) {
             $args[0] = $args[0]->__toString();
         }
 
@@ -109,7 +110,7 @@ class FilterExecutor
         }
 
         $res = $callback( ...$args );
-        if ( $res instanceof HtmlStringable ) {
+        if ( $res instanceof Stringable ) {
             \trigger_error( "Filter |{$name} should be changed to content-aware filter." );
             $info->contentType = ContentType::HTML;
             $res               = $res->__toString();
@@ -158,7 +159,7 @@ class FilterExecutor
     private function callInfoAwareAsClassic( callable $filter, mixed ...$args ) : mixed
     {
         \array_unshift( $args, $info = new FilterInfo() );
-        if ( $args[1] instanceof HtmlStringable ) {
+        if ( $args[1] instanceof Stringable ) {
             $args[1]           = $args[1]->__toString();
             $info->contentType = ContentType::HTML;
         }
