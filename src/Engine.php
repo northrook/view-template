@@ -34,7 +34,6 @@ use stdClass;
 use Stringable;
 use ReflectionAttribute;
 use BadMethodCallException;
-use ReflectionException;
 use function Support\{class_id, file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 use const Support\AUTO;
 
@@ -50,8 +49,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     /** @var Extension[] */
     private array $extensions = [];
-
-    private array $rendered = [];
 
     private stdClass $providers;
 
@@ -189,16 +186,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $string = $template->capture( fn() => $template->render( $block ) );
         $profiler?->stop();
         return $string;
-    }
-
-    final public function hasRendered( string $uniqueRenderId ) : bool
-    {
-        if ( \array_key_exists( $uniqueRenderId, $this->rendered ) ) {
-            return true;
-        }
-
-        $this->rendered[$uniqueRenderId] = true;
-        return false;
     }
 
     /**

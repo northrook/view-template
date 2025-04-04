@@ -27,10 +27,6 @@ abstract class Component
 
     protected const ?string TEMPLATE_DIRECTORY = null;
 
-    // ::DEBUG
-    public static int $max_iterations = 0;
-    // ::DEBUG
-
     private ?Engine $engine = null;
 
     /** @var array<string,null|scalar|scalar[]> */
@@ -48,7 +44,13 @@ abstract class Component
 
     public function render() : string
     {
-        return $this->getComponentNode()->simplify()->print();
+        try {
+            return $this->getComponentNode()->simplify()->print();
+        }
+        catch ( Exception\CompileException $exception ) {
+            $this->logger?->critical( $exception->getMessage(), ['exception' => $exception] );
+            return $this->getString();
+        }
     }
 
     public function getString() : string
@@ -62,26 +64,22 @@ abstract class Component
         );
     }
 
+    /**
+     * @param ?ElementNode $node
+     *
+     * @return ComponentNode
+     * @throws Exception\CompileException
+     */
     final public function getComponentNode( ?ElementNode $node = null ) : ComponentNode
     {
-        if ( self::$max_iterations++ > 5 ) {
-            dd( \get_defined_vars(), self::$max_iterations );
-        }
-
-        $cid = $this->uniqueID;
-        if ( $node->position ) {
-            $cid .= "-{$node->position->getId()}";
-        }
         $engine = $this->getEngine();
-
-        dump( ['engine hasRendered' => $engine->hasRendered( $cid )] );
-
-        $template = $this->getString();
 
         $id       = $this->uniqueID;
         $tag      = $node->name;
         $position = $node->position;
 
+        // Ensure targeted native tags have the 'component-id' set
+        // This is to prevent a recursion loop
         $template = (string) \preg_replace_callback(
             pattern  : "/(<{$tag})(.*?>)/m",
             callback : static function( array $_ ) use ( $id ) : string {
@@ -97,13 +95,14 @@ abstract class Component
                 return $_[1].' component-id="'.$id.'"'
                        .( $_[2][0] === ' ' ? $_[2] : " {$_[2]}" );
             },
-            subject  : $template,
+            subject  : $this->getString(),
             flags    : PREG_UNMATCHED_AS_NULL,
         );
 
-        $ast            = $engine->parse( $template );
-        $node           = $ast->main;
+        $node = $engine->parse( $template )->main;
+
         $node->position = $position;
+
         return new ComponentNode( ...$node->children );
     }
 
@@ -128,13 +127,95 @@ abstract class Component
         array   $promote = [],
         ?string $uniqueId = null,
     ) : self {
-        $this->name       = $this::componentName();
-        $this->attributes = new Attributes();
         $this->prepareArguments( $arguments );
-        $this->uniqueID = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
 
-        // dump( $this, ...\get_defined_vars() );
+        $this->name       = $this::componentName();
+        $this->uniqueID   = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
+        $this->attributes = $this->assignAttributes( $arguments );
+
+        $this->promoteTaggedProperties( $arguments, $promote );
+
+        unset( $arguments['content'], $arguments['tag'] );
+
+        foreach ( $arguments as $property => $value ) {
+            if ( \property_exists( $this, (string) $property ) ) {
+                if ( ! isset( $this->{$property} ) ) {
+                    $this->{$property} = $value;
+                }
+                else {
+                    $this->{$property} = match ( \gettype( $this->{$property} ) ) {
+                        'boolean' => (bool) $value,
+                        default   => $value,
+                    };
+                }
+
+                continue;
+            }
+
+            \assert( \is_string( $value ), 'All remaining arguments should be method calls at this point.' );
+
+            $method = 'do'.\ucfirst( $value );
+
+            if ( \method_exists( $this, $method ) ) {
+                $this->{$method}();
+            }
+            else {
+                $this->logger?->error(
+                    'The {component} was provided with undefined property {property}.',
+                    ['component' => $this->name, 'property' => $property],
+                );
+            }
+        }
+
         return $this;
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return Attributes
+     */
+    private function assignAttributes( array &$arguments ) : Attributes
+    {
+        /** @var array<string, null|array<array-key, string>|bool|int|string> $attributes */
+        $attributes = $arguments['attributes'] ?? [];
+
+        unset( $arguments['attributes'] );
+
+        return new Attributes( ...$attributes );
+    }
+
+    /**
+     * @param array<string, mixed>     $arguments
+     * @param array<string, ?string[]> $promote
+     *
+     * @return void
+     */
+    private function promoteTaggedProperties( array &$arguments, array $promote = [] ) : void
+    {
+        if ( ! isset( $arguments['tag'] ) ) {
+            return;
+        }
+
+        \assert( \is_string( $arguments['tag'] ) );
+
+        /** @var array<int, string> $exploded */
+        $exploded         = \explode( ':', $arguments['tag'] );
+        $arguments['tag'] = $exploded[0];
+
+        $promote = $promote[$arguments['tag']] ?? null;
+
+        foreach ( $exploded as $position => $tag ) {
+            if ( $promote && ( $promote[$position] ?? false ) ) {
+                $arguments[$promote[$position]] = $tag;
+                unset( $arguments[$position] );
+
+                continue;
+            }
+            if ( $position ) {
+                $arguments[$position] = $tag;
+            }
+        }
     }
 
     final public function setDependencies(
@@ -249,12 +330,17 @@ abstract class Component
     private function componentUniqueID( string $set ) : string
     {
         // Set a predefined hash
-        if ( \strlen( $set ) === 8
-             && \ctype_alnum( $set )
-             && \strtolower( $set ) === $set
-        ) {
-            return $set;
+        if ( \strlen( $set ) === 8 ) {
+            if ( \ctype_alnum( $set ) || \strtolower( $set ) === $set ) {
+                return $set;
+            }
+
+            $this->logger?->error(
+                'Invalid component unique ID {set}. Expected 8 characters of alphanumeric, lowercase.',
+                ['set' => $set],
+            );
         }
+
         return \hash( 'xxh32', $set );
     }
 }
