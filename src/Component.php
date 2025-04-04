@@ -153,7 +153,7 @@ abstract class Component
         $this->assignCacheAdapter(
             adapter    : $cache,
             prefix     : slug( 'component.'.self::componentName(), '.' ),
-            defer      : $this->settings['asset.cache.defer']      ?? true,         // defer save by default
+            defer      : $this->settings['asset.cache.defer']      ?? true,    // defer save by default
             expiration : $this->settings['asset.cache.expiration'] ?? 14_400,  // 4 hours
         );
 
