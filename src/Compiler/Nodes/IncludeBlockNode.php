@@ -10,14 +10,11 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\{Block, PrintContext, Tag, TemplateGenerator, TemplateParser};
-use Core\View\Template\Compiler\Nodes\BlockNode;
-use Core\View\Template\Compiler\Nodes\DefineNode;
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Runtime\Template;
 use Core\View\Template\Support\PhpGenerator;
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ModifierNode, Scalar};
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Generator;
 
 /**
@@ -133,7 +130,7 @@ class IncludeBlockNode extends StatementNode
     private function printBlockFrom( PrintContext $context, string $modArg ) : string
     {
         return $context->format(
-            '$this->createTemplate(%node, %node? + $this->params, "include")->renderToContentType(%raw, %node) %line;',
+            '$this->createTemplate(%node, %node? + $this->parameters, "include")->renderToContentType(%raw, %node) %line;',
             $this->from,
             $this->args,
             $modArg,

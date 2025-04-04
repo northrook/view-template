@@ -120,7 +120,12 @@ final class TemplateGenerator
 
         if ( $code || $context->paramsExtraction ) {
             $code .= 'return get_defined_vars();';
-            $code = $this->templateParameters( $code, $context->paramsExtraction, '$this->params', $context );
+            $code = $this->templateParameters(
+                $code,
+                $context->paramsExtraction,
+                '$this->parameters',
+                $context,
+            );
             $generator->addMethod( 'prepare', $code, returns : 'array' );
         }
 
@@ -148,7 +153,7 @@ final class TemplateGenerator
             $body = $this->templateParameters( $block->content, $block->parameters, self::ARGS, $context );
             if ( ! $isDynamic && \str_contains( $body, '$' ) ) {
                 $embedded = $block->tag->name === 'block' && \is_int( $block->layer ) && $block->layer;
-                $body     = 'extract( '.( $embedded ? 'end($this->varStack)' : '$this->params' ).' );'.$body;
+                $body     = 'extract( '.( $embedded ? 'end($this->varStack)' : '$this->parameters' ).' );'.$body;
             }
 
             $generator->addMethod(

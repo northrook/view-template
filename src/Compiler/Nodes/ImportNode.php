@@ -11,9 +11,9 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag};
+
 /**
  * {import "file"[, args]}
  */
@@ -36,7 +36,7 @@ class ImportNode extends StatementNode
     public function print( PrintContext $context ) : string
     {
         return $context->format(
-            '$this->createTemplate(%node, %node? + $this->params, "import")->render() %line;',
+            '$this->createTemplate(%node, %node? + $this->parameters, "import")->render() %line;',
             $this->file,
             $this->args,
             $this->position,

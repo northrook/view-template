@@ -38,14 +38,6 @@ abstract class Template
 
     public const null|string SOURCE = null;
 
-    /** global accumulators for intermediate results */
-    public stdClass $global;
-
-    /** @var array @internal */
-    protected array $parameters = [];
-
-    protected FilterExecutor $filters;
-
     /** @internal */
     protected string|false|null $parentName = null;
 
@@ -58,33 +50,24 @@ abstract class Template
     /** @var array[] */
     private array $blockStack = [];
 
-    private Engine $engine;
-
-    private string $name;
-
     private ?Template $referringTemplate = null;
 
     private ?string $referenceType = null;
 
     /**
      * @param Engine         $engine
-     * @param array          $params
+     * @param array          $parameters
      * @param FilterExecutor $filters
-     * @param stdClass       $providers
+     * @param stdClass       $global     `providers`
      * @param string         $name
      */
     final public function __construct(
-        Engine         $engine,
-        array          $params,
-        FilterExecutor $filters,
-        stdClass       $providers,
-        string         $name,
+        public readonly Engine   $engine,
+        protected array          $parameters,
+        protected FilterExecutor $filters,
+        public stdClass          $global,
+        public readonly string   $name,
     ) {
-        $this->engine     = $engine;
-        $this->parameters = $params;
-        $this->filters    = $filters;
-        $this->name       = $name;
-        $this->global     = $providers;
         $this->initBlockLayer( self::LAYER_TOP );
         $this->initBlockLayer( self::LAYER_LOCAL );
         $this->initBlockLayer( self::LAYER_SNIPPET );

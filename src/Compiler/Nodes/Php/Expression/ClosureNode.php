@@ -24,7 +24,7 @@ class ClosureNode extends ExpressionNode
 {
     /**
      * @param bool                                         $byRef
-     * @param ParameterNode[]                              $params
+     * @param ParameterNode[]                              $parameters
      * @param ClosureUseNode[]                             $uses
      * @param null|ComplexTypeNode|IdentifierNode|NameNode $returnType
      * @param null|ExpressionNode                          $expr
@@ -32,13 +32,13 @@ class ClosureNode extends ExpressionNode
      */
     public function __construct(
         public bool                                         $byRef,
-        public array                                        $params,
+        public array                                        $parameters,
         public array                                        $uses,
         public null|IdentifierNode|NameNode|ComplexTypeNode $returnType = null,
         public ?ExpressionNode                              $expr = null,
         public ?Position                                    $position = null,
     ) {
-        ( function( ParameterNode ...$args ) {} )( ...$params );
+        ( function( ParameterNode ...$args ) {} )( ...$parameters );
         ( function( ClosureUseNode ...$args ) {} )( ...$uses );
     }
 
@@ -52,12 +52,12 @@ class ClosureNode extends ExpressionNode
 
         return $arrow
                 ? 'fn'.( $this->byRef ? '&' : '' )
-                  .'('.$context->implode( $this->params ).')'
+                  .'('.$context->implode( $this->parameters ).')'
                   .( $this->returnType !== null ? ': '.$this->returnType->print( $context ) : '' )
                   .' => '
                   .$this->expr->print( $context )
                 : 'function '.( $this->byRef ? '&' : '' )
-                  .'('.$context->implode( $this->params ).')'
+                  .'('.$context->implode( $this->parameters ).')'
                   .( ! empty( $this->uses ) ? ' use ('.$context->implode( $this->uses ).')' : '' )
                   .( $this->returnType !== null ? ' : '.$this->returnType->print( $context ) : '' )
                   .( $this->expr ? ' { return '.$this->expr->print( $context ).'; }' : ' {}' );
@@ -65,7 +65,7 @@ class ClosureNode extends ExpressionNode
 
     public function &getIterator() : Generator
     {
-        foreach ( $this->params as &$item ) {
+        foreach ( $this->parameters as &$item ) {
             yield $item;
         }
 

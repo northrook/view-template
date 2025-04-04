@@ -10,10 +10,9 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\Support\PhpGenerator;
 use Generator;
-use Core\View\Template\Compiler\{PhpHelpers, PrintContext, Tag, TemplateGenerator};
+use Core\View\Template\Compiler\{PrintContext, Tag, TemplateGenerator};
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ModifierNode};
 
 /**
@@ -32,6 +31,7 @@ class IncludeFileNode extends StatementNode
     /**
      * @param Tag $tag
      *
+     * @return IncludeFileNode
      * @throws \Core\View\Template\Exception\CompileException
      */
     public static function create( Tag $tag ) : static
@@ -64,7 +64,7 @@ class IncludeFileNode extends StatementNode
         $fl = TemplateGenerator::ARG_FILTER;
         $ns = TemplateGenerator::NAMESPACE;
         return $context->format(
-            '$this->createTemplate(%node, %node? + $this->params, %dump)->renderToContentType(%raw) %line;',
+            '$this->createTemplate(%node, %node? + $this->parameters, %dump)->renderToContentType(%raw) %line;',
             $this->file,
             $this->args,
             $this->mode,

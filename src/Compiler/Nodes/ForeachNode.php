@@ -12,7 +12,6 @@ namespace Core\View\Template\Compiler\Nodes;
 use Core\View\Template\Support\CachingIterator;
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\{Node, NodeTraverser, Position, PrintContext, Tag, TagParser, TemplateGenerator};
-use Core\View\Template\Compiler\Nodes\{AreaNode, AuxiliaryNode, NopNode, StatementNode, TemplateNode};
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ListNode};
 use Core\View\Template\Compiler\Nodes\Php\Expression\VariableNode;
 
@@ -187,7 +186,7 @@ class ForeachNode extends StatementNode
                     fn( PrintContext $context ) => $context->format(
                         <<<XX
                             if (!\$this->getReferringTemplate() || \$this->getReferenceType() === 'extends') {
-                            	foreach (array_intersect_key(%dump, \$this->params) as {$_var} => {$_line}) {
+                            	foreach (array_intersect_key(%dump, \$this->parameters) as {$_var} => {$_line}) {
                             		trigger_error("Variable \${$_var} overwritten in foreach on line {$_line}");
                             	}
                             }
