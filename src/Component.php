@@ -15,7 +15,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
 use InvalidArgumentException;
-use function Support\{normalize_path, slug};
+use function Support\{normalize_path, slug, str_end};
 use LogicException;
 
 abstract class Component
@@ -28,6 +28,8 @@ abstract class Component
     protected const ?string TEMPLATE_DIRECTORY = null;
 
     private ?Engine $engine = null;
+
+    protected ?string $templateFilename;
 
     /** @var array<string,null|scalar|scalar[]> */
     protected readonly array $settings;
@@ -286,7 +288,9 @@ abstract class Component
      */
     final protected function getTemplatePath( ?string $filename = null ) : string
     {
-        $filename ??= "{$this::componentName()}.latte";
+        $this->templateFilename ??= $this::componentName();
+
+        $filename = str_end( $this->templateFilename, '.latte' );
 
         $path = normalize_path(
             self::TEMPLATE_DIRECTORY ?? ( new ReflectionClass( static::class ) )->getFileName(),
@@ -322,6 +326,9 @@ abstract class Component
         return $this->getTemplatePath();
     }
 
+    /**
+     * @return array<string, mixed>|object
+     */
     protected function getParameters() : array|object
     {
         return $this;
