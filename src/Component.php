@@ -9,6 +9,7 @@ use Cache\CachePoolTrait;
 use Core\Profiler\ClerkProfiler;
 use Core\View\Attribute\ViewComponent;
 use Core\View\Element\Attributes;
+use Core\View\Template\Component\NodeParser;
 use Core\View\Template\Compiler\{Nodes\ComponentNode};
 use Core\View\Template\Compiler\Nodes\Html\ElementNode;
 use Psr\Cache\CacheItemPoolInterface;
@@ -118,17 +119,21 @@ abstract class Component
     protected function prepareArguments( array &$arguments ) : void {}
 
     /**
-     * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string} $arguments
-     * @param array<string, ?string[]>                                                                                                         $promote
-     * @param null|string                                                                                                                      $uniqueId  8 character hash key
+     * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string}|ElementNode $arguments
+     * @param array<string, ?string[]>                                                                                                                     $promote
+     * @param null|string                                                                                                                                  $uniqueId  8 character hash key
      *
      * @return $this
      */
     final public function create(
-        array   $arguments,
-        array   $promote = [],
-        ?string $uniqueId = null,
+        array|ElementNode $arguments,
+        array             $promote = [],
+        ?string           $uniqueId = null,
     ) : self {
+        if ( $arguments instanceof ElementNode ) {
+            $arguments = Component::nodeArguments( $arguments );
+        }
+
         $this->prepareArguments( $arguments );
 
         $this->name       = $this::componentName();
@@ -140,7 +145,7 @@ abstract class Component
         unset( $arguments['content'], $arguments['tag'] );
 
         foreach ( $arguments as $property => $value ) {
-            if ( \property_exists( $this, (string) $property ) ) {
+            if ( \property_exists( $this, $property ) ) {
                 if ( ! isset( $this->{$property} ) ) {
                     $this->{$property} = $value;
                 }
@@ -264,6 +269,24 @@ abstract class Component
         }
 
         return $name;
+    }
+
+    /**
+     * @param ElementNode|NodeParser $node
+     *
+     * @return array{tag: string, attributes: array<string, null|array<array-key, string>|bool|int|string>, content: ?array<array-key, string>}
+     */
+    public static function nodeArguments( NodeParser|ElementNode $node ) : array
+    {
+        if ( ! $node instanceof NodeParser ) {
+            $node = new NodeParser( $node );
+        }
+
+        return [
+            'tag'        => $node->tag,
+            'attributes' => $node->attributes(),
+            'content'    => $node->getContent(),
+        ];
     }
 
     final public static function viewComponentAttribute() : ViewComponent
