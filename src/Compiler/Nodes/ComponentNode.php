@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\PrintContext;
-
+use Core\View\Template\Compiler\{Position, PrintContext};
 use Generator;
 
 final class ComponentNode extends AreaNode
@@ -12,10 +13,20 @@ final class ComponentNode extends AreaNode
     public array $children = [];
 
     /**
-     * @param AreaNode[] $nodes
+     * @param AreaNode[]|FragmentNode|TemplateNode $content
+     * @param ?Position                            $position
      */
-    public function __construct( AreaNode ...$nodes )
-    {
+    public function __construct(
+        TemplateNode|FragmentNode|AreaNode|array $content,
+        public ?Position                         $position = null,
+    ) {
+        $nodes = match ( true ) {
+            $content instanceof TemplateNode => $content->main->children,
+            $content instanceof FragmentNode => $content->children,
+            $content instanceof AreaNode     => [$content],
+            default                          => $content,
+        };
+
         foreach ( $nodes as $node ) {
             $this->append( $node );
         }

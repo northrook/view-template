@@ -16,8 +16,8 @@ use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use ReflectionClass;
 use InvalidArgumentException;
-use function Support\{normalize_path, slug, str_end};
 use LogicException;
+use function Support\{normalize_path, slug, str_end};
 
 abstract class Component
 {
@@ -69,44 +69,59 @@ abstract class Component
 
     /**
      * @param ?ElementNode $node
+     * @param array        $tags
      *
      * @return ComponentNode
      * @throws Exception\CompileException
      */
-    final public function getComponentNode( ?ElementNode $node = null ) : ComponentNode
+    final public function getComponentNode( ?ElementNode $node = null, array $tags = [] ) : ComponentNode
     {
-        $engine = $this->getEngine();
+        $tags[$node->name] ??= true;
+        $tags = \array_keys( $tags );
+        $tags = \implode( '|', $tags );
 
-        $id       = $this->uniqueID;
-        $tag      = $node->name;
-        $position = $node->position;
-
-        // Ensure targeted native tags have the 'component-id' set
-        // This is to prevent a recursion loop
         $template = (string) \preg_replace_callback(
-            pattern  : "/(<{$tag})(.*?>)/m",
-            callback : static function( array $_ ) use ( $id ) : string {
-                // : $_[0] full '<$tag with="attributes">'
-                // : $_[1] opening '<$tag'
-                // : $_[2] remaining ' with="attributes">'
-
-                // Bail early on existing component-id attribute
-                if ( \str_contains( $_[0], ' component-id="' ) ) {
-                    return $_[0];
-                }
-
-                return $_[1].' component-id="'.$id.'"'
-                       .( $_[2][0] === ' ' ? $_[2] : " {$_[2]}" );
-            },
+            pattern  : "#<({$tags})(\b[^>]*?>)#m",
+            callback : [$this, 'guaranteeComponentId'],
             subject  : $this->getString(),
             flags    : PREG_UNMATCHED_AS_NULL,
         );
 
-        $node = $engine->parse( $template )->main;
+        return new ComponentNode(
+            $this->engine->parse( $template ),
+            $node->position,
+        );
+    }
 
-        $node->position = $position;
+    /**
+     * Ensure targeted native tags have the 'component-id' set
+     * This is to prevent a recursion loop
+     *
+     * @param array{0:string, 1:string, 2: string} $_
+     *
+     * @return string
+     */
+    private function guaranteeComponentId( array $_ ) : string
+    {
+        /**
+         * @var string $element '<$tag with="attributes">'
+         * @var string $tag     opening '$tag'
+         * @var string $tail    remaining ' with="attributes">'
+         */
+        [$element, $tag, $tail] = $_;
 
-        return new ComponentNode( ...$node->children );
+        // Bail early on existing component-id attribute
+        if ( \str_contains( $element, ' component-id="' ) ) {
+            return $element;
+        }
+
+        $element = "<{$tag} component-id=\"{$this->uniqueID}\"";
+
+        if ( $tail[0] !== ' ' ) {
+            $element .= ' ';
+        }
+
+        return $element.$tail;
     }
 
     /**
