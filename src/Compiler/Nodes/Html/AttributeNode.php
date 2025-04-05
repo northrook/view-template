@@ -25,30 +25,33 @@ class AttributeNode extends AreaNode
 
     public function print( PrintContext $context ) : string
     {
-        $res = $this->name->print( $context );
+        $output = $this->name->print( $context );
+
         if ( ! $this->value ) {
-            return $res;
+            return $output;
         }
 
-        $res .= "echo '=';";
-        $quote = $this->quote ?? ( $this->value instanceof TextNode ? null : '"' );
-        $res .= $quote ? 'echo '.\var_export( $quote, true ).';' : '';
-
         $escaper = $context->beginEscape();
+        $quote   = $this->quote ?? ( $this->value instanceof TextNode ? null : '"' );
+
+        $output .= "echo '=';";
+        $output .= $quote ? 'echo '.\var_export( $quote, true ).';' : '';
+
         $escaper->enterHtmlAttribute( NodeHelpers::toText( $this->name ) );
+
         if ( $this->value instanceof FragmentNode && $escaper->export() === 'html/attr/url' ) {
             foreach ( $this->value->children as $child ) {
-                $res .= $child->print( $context );
-                $escaper->enterHtmlAttribute( null );
+                $output .= $child->print( $context );
+                $escaper->enterHtmlAttribute();
             }
         }
         else {
-            $res .= $this->value->print( $context );
+            $output .= $this->value->print( $context );
         }
 
         $context->restoreEscape();
-        $res .= $quote ? 'echo '.\var_export( $quote, true ).';' : '';
-        return $res;
+        $output .= $quote ? 'echo '.\var_export( $quote, true ).';' : '';
+        return $output;
     }
 
     public function &getIterator() : Generator

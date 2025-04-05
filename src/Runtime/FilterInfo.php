@@ -14,6 +14,8 @@ use Core\View\Template\Exception\RuntimeException;
 
 /**
  * Filter runtime info
+ *
+ * @internal
  */
 class FilterInfo
 {

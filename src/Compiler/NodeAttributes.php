@@ -1,15 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Core\View\Template\Compiler;
 
 use Core\View\Element\Attributes;
-use Core\View\Template\Compiler\Nodes\FragmentNode;
+use Core\View\Template\Compiler\Nodes\{FragmentNode, PrintNode};
 use Core\View\Template\Compiler\Nodes\Html\{AttributeNode, ElementNode};
 use Core\View\Template\Support\NewNode;
 
-final readonly class NodeAttributes
+final class NodeAttributes
 {
-    public Attributes $attributes;
+    /** @var array<array-key, AttributeNode|string> */
+    private array $variables = [];
+
+    public readonly Attributes $attributes;
 
     public function __construct( ElementNode|FragmentNode $from = null )
     {
@@ -19,17 +24,27 @@ final readonly class NodeAttributes
             default                       => new FragmentNode(),
         };
 
-        // dump( $attributeFragmentNode );
         $this->attributes = new Attributes();
 
-        foreach ( $attributeFragmentNode as $attribute ) {
-            if ( $attribute instanceof AttributeNode ) {
-                $name  = NodeHelpers::toText( $attribute->name );
-                $value = NodeHelpers::toText( $attribute->value );
-                $this->attributes->set( (string) $name, $value );
+        // TODO : Validate inline expressions: class="flex {$var ?? 'column'} px:16"
+        foreach ( $attributeFragmentNode as $index => $attribute ) {
+            // Skip separators
+            if ( ! $attribute instanceof AttributeNode ) {
+                continue;
+            }
+
+            // Preserve expressions
+            if ( $attribute->name instanceof PrintNode ) {
+                $this->variables[$index] = $attribute;
+            }
+            // Set current index/name and attribute values
+            else {
+                $name                   = NodeHelpers::toText( $attribute->name );
+                $value                  = NodeHelpers::toText( $attribute->value );
+                $this->variables[$name] = $value;
+                $this->attributes->add( (string) $name, $value );
             }
         }
-        // dump( $this->attributes );
     }
 
     public function __invoke() : Attributes
@@ -39,25 +54,23 @@ final readonly class NodeAttributes
 
     public function getNode() : ?FragmentNode
     {
-        $attributes = $this->attributes->resolveAttributes( true );
-
-        if ( empty( \array_filter( $attributes ) ) ) {
-            return null;
-        }
-
         $fragmentNode = new FragmentNode();
-        // $firstKey     = \array_key_first( $attributes );
-        // $lastKey      = \array_key_last( $attributes );
 
-        // dump( $attributes );
-        foreach ( $attributes as $name => $value ) {
-            // dump( 'Is first item? ' . ( $firstKey === $name ? 'true' : 'false' ) );
-            // dump( 'Is last item? ' . ( $lastKey === $name ? 'true' : 'false' ) );
-            // dump( $name, $value );
-            $fragmentNode->append( NewNode::text( ' ' ) );
+        foreach ( \array_merge(
+            $this->variables,
+            $this->attributes->resolveAttributes( true ),
+        ) as $name => $value ) {
+            $fragmentNode->append( NewNode::text( WHITESPACE ) );
+
+            if ( $value instanceof AttributeNode ) {
+                $fragmentNode->append( $value );
+
+                continue;
+            }
+
             $fragmentNode->append( new AttributeNode( NewNode::text( $name ), NewNode::text( $value ), '"' ) );
         }
 
-        return $fragmentNode;
+        return empty( $fragmentNode->children ) ? null : $fragmentNode;
     }
 }

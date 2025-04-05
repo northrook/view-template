@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Runtime;
 
+use Core\View\Element\Attributes;
 use Stringable;
 
 use Core\View\Template\{ContentType, Exception\RuntimeException};
 use Core\View\Template\Compiler\{Escaper, TemplateLexer};
+use const Support\{ENCODED_APOSTROPHE, ENCODED_QUOTE, ENCODED_SPACE};
 
 /**
  * Escaping & sanitization filters.
@@ -31,68 +33,86 @@ class Filters
     /**
      * Escapes string for use everywhere inside HTML (except for comments).
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeHtml( mixed $s ) : string
+    public static function escapeHtml( mixed $value ) : string
     {
-        return \htmlspecialchars( (string) $s, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8' );
+        return \htmlspecialchars( (string) $value, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, CHARSET );
     }
 
     /**
      * Escapes string for use inside HTML text.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeHtmlText( mixed $s ) : string
+    public static function escapeHtmlText( mixed $value ) : string
     {
-        if ( $s instanceof Stringable ) {
-            return $s->__toString();
+        if ( $value instanceof Stringable ) {
+            return $value->__toString();
         }
 
-        $s = \htmlspecialchars( (string) $s, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-        return \strtr( $s, ['{{' => '{<!-- -->{', '{' => '&#123;'] );
+        $value = \htmlspecialchars( (string) $value, ENT_NOQUOTES | ENT_SUBSTITUTE, CHARSET );
+        return \strtr( $value, ['{{' => '{<!-- -->{', '{' => '&#123;'] );
     }
 
     /**
      * Escapes string for use inside HTML attribute value.
      *
-     * @param mixed $s
+     * @param mixed $value
      * @param bool  $double
      *
      * @return string
      */
-    public static function escapeHtmlAttr( mixed $s, bool $double = true ) : string
+    public static function escapeHtmlAttr( mixed $value, bool $double = true ) : string
     {
-        $double = $double && $s instanceof Stringable ? false : $double;
-        $s      = (string) $s;
-        if ( \str_contains( $s, '`' ) && \strpbrk( $s, ' <>"\'' ) === false ) {
-            $s .= ' '; // protection against innerHTML mXSS vulnerability nette/nette#1496
+        $double = $double && $value instanceof Stringable ? false : $double;
+        $value  = (string) $value;
+        if ( \str_contains( $value, '`' ) && \strpbrk( $value, ' <>"\'' ) === false ) {
+            $value .= ' '; // protection against innerHTML mXSS vulnerability nette/nette#1496
         }
 
-        $s = \htmlspecialchars( $s, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8', $double );
-        return \str_replace( '{', '&#123;', $s );
+        $value = \htmlspecialchars( $value, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, CHARSET, $double );
+        return \str_replace( '{', '&#123;', $value );
     }
 
     /**
      * Escapes string for use inside HTML tag.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeHtmlTag( mixed $s ) : string
+    public static function escapeHtmlTag( mixed $value ) : string
     {
-        $s = (string) $s;
-        $s = \htmlspecialchars( $s, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8' );
-        return \preg_replace_callback(
-            '#[=/\s]#',
-            fn( $m ) => '&#'.\ord( $m[0] ).';',
-            $s,
-        );
+        // TODO: [lo] Parse iterables as [attribute=>value] and escape each
+        $escape = match ( true ) {
+            $value instanceof Attributes => $value->resolveAttributes( true ),
+            $value instanceof Stringable => [(string) $value],
+            default                      => throw new RuntimeException( 'Unexpected value type.' ),
+        };
+
+        $attributes = [];
+
+        foreach ( $escape as $attribute => $value ) {
+            $encoded = \preg_replace_callback(
+                '#[=/\s]#',
+                fn( $m ) => '&#'.\ord( $m[0] ).';',
+                \htmlspecialchars( $value, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, CHARSET ),
+            );
+            $value = \str_replace( ENCODED_SPACE, WHITESPACE, $encoded );
+
+            if ( \is_string( $attribute ) ) {
+                $value = " {$attribute}=\"{$value}\"";
+            }
+
+            $attributes[] = $value;
+        }
+
+        return \implode( ' ', $attributes );
     }
 
     /**
@@ -130,7 +150,7 @@ class Filters
             return self::convertHtmlToHtmlRawText( $s->__toString() );
         }
 
-        return \htmlspecialchars( (string) $s, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8' );
+        return \htmlspecialchars( (string) $s, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, CHARSET );
     }
 
     /**
@@ -142,7 +162,7 @@ class Filters
      */
     public static function escapeHtmlQuotes( mixed $s ) : string
     {
-        return \strtr( (string) $s, ['"' => '&quot;', "'" => '&apos;'] );
+        return \strtr( (string) $s, ['"' => ENCODED_QUOTE, "'" => ENCODED_APOSTROPHE] );
     }
 
     /**
@@ -162,53 +182,53 @@ class Filters
         // XML 1.1: \x00 forbidden directly and as a character reference,
         //   \x09 \x0A \x0D \x85 allowed directly, C0, C1 and \x7F allowed as character references
         $s = \preg_replace( '#[\x00-\x08\x0B\x0C\x0E-\x1F]#', "\u{FFFD}", (string) $s );
-        return \htmlspecialchars( $s, ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE, 'UTF-8' );
+        return \htmlspecialchars( $s, ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE, CHARSET );
     }
 
     /**
      * Escapes string for use inside XML tag.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeXmlTag( mixed $s ) : string
+    public static function escapeXmlTag( mixed $value ) : string
     {
-        $s = self::escapeXml( (string) $s );
+        $string = self::escapeXml( (string) $value );
         return \preg_replace_callback(
             '#[=/\s]#',
-            fn( $m ) => '&#'.\ord( $m[0] ).';',
-            $s,
+            static fn( $m ) => '&#'.\ord( $m[0] ).';',
+            $string,
         );
     }
 
     /**
      * Escapes string for use inside CSS template.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeCss( mixed $s ) : string
+    public static function escapeCss( mixed $value ) : string
     {
         // http://www.w3.org/TR/2006/WD-CSS21-20060411/syndata.html#q6
-        return \addcslashes( (string) $s, "\x00..\x1F!\"#$%&'()*+,./:;<=>?@[\\]^`{|}~" );
+        return \addcslashes( (string) $value, "\x00..\x1F!\"#$%&'()*+,./:;<=>?@[\\]^`{|}~" );
     }
 
     /**
      * Escapes variables for use inside <script>.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeJs( mixed $s ) : string
+    public static function escapeJs( mixed $value ) : string
     {
-        if ( $s instanceof Stringable ) {
-            $s = $s->__toString();
+        if ( $value instanceof Stringable ) {
+            $value = $value->__toString();
         }
 
-        $json = \json_encode( $s, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE );
+        $json = \json_encode( $value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE );
 
         if ( $error = \json_last_error() ) {
             throw new RuntimeException( \json_last_error_msg(), $error );
@@ -220,16 +240,16 @@ class Filters
     /**
      * Escapes string for use inside iCal template.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function escapeICal( mixed $s ) : string
+    public static function escapeICal( mixed $value ) : string
     {
         // https://www.ietf.org/rfc/rfc5545.txt
-        $s = \str_replace( "\r", '', (string) $s );
-        $s = \preg_replace( '#[\x00-\x08\x0B-\x1F]#', "\u{FFFD}", (string) $s );
-        return \addcslashes( $s, "\";\\,:\n" );
+        $string = (string) \str_replace( "\r", '', (string) $value );
+        $string = \preg_replace( '#[\x00-\x08\x0B-\x1F]#', "\u{FFFD}", $string );
+        return \addcslashes( $string, "\";\\,:\n" );
     }
 
     /**
@@ -261,74 +281,78 @@ class Filters
         );
     }
 
-    public static function nop( $s ) : string
+    public static function nop( $value ) : string
     {
-        return (string) $s;
+        return (string) $value;
     }
 
     /**
      * Converts JS and CSS for usage in <script> or <style>
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function convertJSToHtmlRawText( mixed $s ) : string
+    public static function convertJSToHtmlRawText( mixed $value ) : string
     {
-        return \preg_replace( '#</(script|style)#i', '<\/$1', (string) $s );
+        return \preg_replace( '#</(script|style)#i', '<\/$1', (string) $value );
     }
 
     /**
      * Sanitizes <script> in <script type=text/html>
      *
-     * @param string $s
+     * @param string $value
      *
      * @return string
      */
-    public static function convertHtmlToHtmlRawText( string $s ) : string
+    public static function convertHtmlToHtmlRawText( string $value ) : string
     {
-        return \preg_replace( '#(</?)(script)#i', '$1x-$2', $s );
+        return \preg_replace( '#(</?)(script)#i', '$1x-$2', $value );
     }
 
     /**
      * Converts HTML text to quoted attribute. The quotation marks need to be escaped.
      *
-     * @param string $s
+     * @param string $value
      *
      * @return string
      */
-    public static function convertHtmlToHtmlAttr( string $s ) : string
+    public static function convertHtmlToHtmlAttr( string $value ) : string
     {
-        return self::escapeHtmlAttr( $s, false );
+        return self::escapeHtmlAttr( $value, false );
     }
 
     /**
      * Converts HTML to plain text.
      *
-     * @param string $s
+     * @param string $value
      *
      * @return string
      */
-    public static function convertHtmlToText( string $s ) : string
+    public static function convertHtmlToText( string $value ) : string
     {
-        $s = \strip_tags( $s );
-        return \html_entity_decode( $s, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        return \html_entity_decode(
+            \strip_tags( $value ),
+            ENT_QUOTES | ENT_HTML5,
+            CHARSET,
+        );
     }
 
     /**
      * Sanitizes string for use inside href attribute.
      *
-     * @param mixed $s
+     * @param mixed $value
      *
      * @return string
      */
-    public static function safeUrl( mixed $s ) : string
+    public static function safeUrl( mixed $value ) : string
     {
-        $s = $s instanceof Stringable
-                ? self::convertHtmlToText( (string) $s )
-                : (string) $s;
+        $string = $value instanceof Stringable
+                ? self::convertHtmlToText( (string) $value )
+                : (string) $value;
 
-        return \preg_match( '~^(?:(?:https?|ftp)://[^@]+(?:/.*)?|(?:mailto|tel|sms):.+|[/?#].*|[^:]+)$~Di', $s ) ? $s
+        return \preg_match( '~^(?:(?:https?|ftp)://[^@]+(?:/.*)?|(?:mailto|tel|sms):.+|[/?#].*|[^:]+)$~Di', $string )
+                ? $string
                 : '';
     }
 
