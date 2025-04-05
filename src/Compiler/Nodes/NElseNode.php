@@ -9,17 +9,11 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\ForeachNode;
-use Core\View\Template\Compiler\Nodes\IfChangedNode;
-use Core\View\Template\Compiler\Nodes\IfContentNode;
-use Core\View\Template\Compiler\Nodes\IfNode;
-use Core\View\Template\Compiler\Nodes\TryNode;
 use Core\View\Template\Exception\CompileException;
 use Generator;
 use LogicException;
 
-use Core\View\Template\Compiler\{Node, NodeTraverser, Nodes, PrintContext, Tag};
-use Core\View\Template\Compiler\Nodes\{AreaNode, StatementNode};
+use Core\View\Template\Compiler\{Node, PrintContext, Tag};
 
 /**
  * n:else
@@ -29,8 +23,9 @@ final class NElseNode extends StatementNode
     public AreaNode $content;
 
     /**
+     * @param Tag $tag
+     *
      * @return Generator<int, ?array, array{AreaNode, ?Tag}, static>
-     * @param  Tag                                                   $tag
      */
     public static function create( Tag $tag ) : Generator
     {
@@ -51,10 +46,10 @@ final class NElseNode extends StatementNode
 
     public static function processPass( Node $node ) : void
     {
-        ( new NodeTraverser() )->traverse(
+        Node::traverse(
             $node,
             function( Node $node ) {
-                if ( $node instanceof Nodes\FragmentNode ) {
+                if ( $node instanceof FragmentNode ) {
                     for ( $i = \count( $node->children ) - 1; $i >= 0; $i-- ) {
                         $nElse = $node->children[$i];
                         if ( ! $nElse instanceof self ) {
@@ -63,7 +58,7 @@ final class NElseNode extends StatementNode
 
                         \array_splice( $node->children, $i, 1 );
                         $prev = $node->children[--$i] ?? null;
-                        if ( $prev instanceof Nodes\TextNode && \trim(
+                        if ( $prev instanceof TextNode && \trim(
                             $prev->content,
                         ) === '' ) {
                             \array_splice( $node->children, $i, 1 );
@@ -72,9 +67,9 @@ final class NElseNode extends StatementNode
 
                         if (
                             $prev instanceof IfNode
-                            || $prev instanceof Nodes\ForeachNode
+                            || $prev instanceof ForeachNode
                             || $prev instanceof TryNode
-                            || $prev instanceof Nodes\IfChangedNode
+                            || $prev instanceof IfChangedNode
                             || $prev instanceof IfContentNode
                         ) {
                             if ( $prev->else ) {

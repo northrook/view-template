@@ -25,27 +25,21 @@ final class PreformatterExtension extends Extension
     #[Override]
     public function getPasses() : array
     {
-        return [
-            'node-preformatter' => [$this, 'nodePreformatter'],
-        ];
+        return ['node-preformatter' => [$this, 'nodePreformatter']];
     }
 
     public function nodePreformatter( TemplateNode $template ) : void
     {
         $this->trimFragmentWhitespace( $template->main );
 
-        ( new NodeTraverser() )->traverse(
-            $template,
-            // [$this, 'prepare'],
-            leave : [$this, 'parse'],
-        );
+        Node::traverse( $template, leave : [$this, 'parse'] );
     }
 
     public function parse( Node $node ) : int|Node
     {
         // Skip expression nodes, as a component cannot exist there
         if ( $node instanceof ExpressionNode ) {
-            return NodeTraverser::DontTraverseChildren;
+            return NodeTraverser::CONTINUE;
         }
 
         // Components are only called from ElementNodes

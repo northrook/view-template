@@ -182,7 +182,7 @@ trait NodeTraverserMethods
     {
         // Skip expression nodes, as a component cannot exist there
         if ( $node instanceof ExpressionNode ) {
-            return NodeTraverser::DontTraverseChildren;
+            return NodeTraverser::CONTINUE;
         }
 
         // Components are only called from ElementNodes

@@ -57,7 +57,7 @@ final class NodeHelpers
                 enter : function( Node $node ) use ( $filter, &$found ) {
                     if ( $filter( $node ) ) {
                         $found = $node;
-                        return NodeTraverser::StopTraversal;
+                        return NodeTraverser::BREAK;
                     }
                     return $node; // :: [ADDED]
                 },

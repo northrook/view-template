@@ -47,14 +47,6 @@ abstract class Extension implements LoggerAwareInterface
         return [];
     }
 
-    final protected function traverse(
-        TemplateNode $template,
-        ?callable    $enter = null,
-        ?callable    $leave = null,
-    ) : void {
-        ( new NodeTraverser() )->traverse( $template, $enter, $leave );
-    }
-
     /**
      * Returns a list of parsers for Latte tags.
      *

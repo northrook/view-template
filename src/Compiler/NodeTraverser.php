@@ -11,9 +11,11 @@ namespace Core\View\Template\Compiler;
 
 final class NodeTraverser
 {
-    public const int DontTraverseChildren = 1;
+    // DontTraverseChildren
+    public const int CONTINUE = 1;
 
-    public const int StopTraversal = 2;
+    // StopTraversal
+    public const int BREAK = 2;
 
     /** @var ?callable(Node): (null|int|Node) */
     private $enter;
@@ -21,13 +23,15 @@ final class NodeTraverser
     /** @var ?callable(Node): (null|int|Node) */
     private $leave;
 
-    private bool $stop;
+    private bool $stop = false;
 
-    public function traverse( Node $node, ?callable $enter = null, ?callable $leave = null ) : Node
-    {
+    public function traverse(
+        Node      $node,
+        ?callable $enter = null,
+        ?callable $leave = null,
+    ) : Node {
         $this->enter = $enter;
         $this->leave = $leave;
-        $this->stop  = false;
         return $this->traverseNode( $node );
     }
 
@@ -35,14 +39,14 @@ final class NodeTraverser
     {
         $children = true;
         if ( $this->enter ) {
-            $res = ( $this->enter )( $node );
-            if ( $res instanceof Node ) {
-                $node = $res;
+            $step = ( $this->enter )( $node );
+            if ( $step instanceof Node ) {
+                $node = $step;
             }
-            elseif ( $res === self::DontTraverseChildren ) {
+            elseif ( $step === $this::CONTINUE ) {
                 $children = false;
             }
-            elseif ( $res === self::StopTraversal ) {
+            elseif ( $step === $this::BREAK ) {
                 $this->stop = true;
                 $children   = false;
             }
@@ -58,11 +62,11 @@ final class NodeTraverser
         }
 
         if ( ! $this->stop && $this->leave ) {
-            $res = ( $this->leave )( $node );
-            if ( $res instanceof Node ) {
-                $node = $res;
+            $step = ( $this->leave )( $node );
+            if ( $step instanceof Node ) {
+                $node = $step;
             }
-            elseif ( $res === self::StopTraversal ) {
+            elseif ( $step === $this::BREAK ) {
                 $this->stop = true;
             }
         }

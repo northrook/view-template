@@ -20,4 +20,12 @@ abstract class Node implements IteratorAggregate
      * @return Generator<self>
      */
     abstract public function &getIterator() : Generator;
+
+    public static function traverse(
+        Node      $node,
+        ?callable $enter = null,
+        ?callable $leave = null,
+    ) : Node {
+        return ( new NodeTraverser() )->traverse( $node, $enter, $leave );
+    }
 }
