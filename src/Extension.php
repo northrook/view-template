@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template;
 
+use Core\View\Template\Compiler\Node;
 use Core\View\Template\Compiler\Nodes\TemplateNode;
-use Core\View\Template\Compiler\NodeTraverser;
 use Core\View\Template\Runtime\Template;
 use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use stdClass;
@@ -40,7 +40,7 @@ abstract class Extension implements LoggerAwareInterface
     /**
      * Returns a list of parsers for Latte tags.
      *
-     * @return array<array-key, callable(TemplateNode):void>
+     * @return array<array-key, callable(TemplateNode):Node|callable(TemplateNode):void>
      */
     public function getPasses() : array
     {
