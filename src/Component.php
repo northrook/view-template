@@ -53,6 +53,11 @@ abstract class Component implements Stringable
         );
     }
 
+    public function getArguments() : array
+    {
+        return [];
+    }
+
     final public function setDependencies(
         ?Engine          $engine,
         ?ClerkProfiler   $profiler = null,
