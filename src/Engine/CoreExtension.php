@@ -53,7 +53,7 @@ use Core\View\Template\{Engine,
     Exception\CompileException,
     Exception\RuntimeException
 };
-use Core\View\Template\Compiler\{Nodes\Php\Scalar\StringNode, Tag, TemplateParser};
+use Core\View\Template\Compiler\{Nodes\DumpDieNode, Nodes\Php\Scalar\StringNode, Tag, TemplateParser};
 use Core\View\Template\Compiler\Nodes\TextNode;
 use Core\View\Template\Runtime\{Filters as RuntimeFilters, Template};
 use Generator;
@@ -117,6 +117,7 @@ final class CoreExtension extends Extension
             'syntax'      => $this->parseSyntax( ... ),
 
             'dump'       => [DumpNode::class, 'create'],
+            'dd'         => [DumpDieNode::class, 'create'],
             'debugbreak' => [DebugbreakNode::class, 'create'],
             'trace'      => [TraceNode::class, 'create'],
 

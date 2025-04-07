@@ -59,7 +59,7 @@ final class TagParser extends TagParserData
     /**
      * Parses PHP-like expression.
      *
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function parseExpression() : ExpressionNode
     {
@@ -69,7 +69,7 @@ final class TagParser extends TagParserData
     /**
      * Parses optional list of arguments. Named and variadic arguments are also supported.
      *
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function parseArguments() : ArrayNode
     {
@@ -79,7 +79,7 @@ final class TagParser extends TagParserData
     /**
      * Parses optional list of filters.
      *
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function parseModifier() : ModifierNode
     {
@@ -94,7 +94,7 @@ final class TagParser extends TagParserData
      * @param bool $colon
      *
      * @return ExpressionNode
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function parseUnquotedStringOrExpression( bool $colon = true ) : ExpressionNode
     {
@@ -158,7 +158,7 @@ final class TagParser extends TagParserData
      * Parses variables used in foreach.
      *
      * @internal
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function parseForeach() : array
     {
@@ -170,8 +170,8 @@ final class TagParser extends TagParserData
      *
      * @param string[] $kind
      *
-     * @throws \Core\View\Template\Exception\CompileException
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
+     * @throws CompileException
      */
     public function tryConsumeTokenBeforeUnquotedString( string ...$kind ) : ?Token
     {
@@ -192,7 +192,7 @@ final class TagParser extends TagParserData
      * @param bool   $recovery
      *
      * @return mixed
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     private function parse( string $schema, bool $recovery = false ) : mixed
     {
@@ -345,7 +345,7 @@ final class TagParser extends TagParserData
     /**
      * @param Token $token
      *
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function throwReservedKeywordException( Token $token ) : void
     {
@@ -356,7 +356,7 @@ final class TagParser extends TagParserData
      * @param Expression\FunctionCallableNode|Expression\FunctionCallNode $func
      *
      * @return ExpressionNode
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     protected function checkFunctionName(
         Expression\FunctionCallNode|Expression\FunctionCallableNode $func,
@@ -411,7 +411,7 @@ final class TagParser extends TagParserData
      * @param Position         $endPos
      *
      * @return Scalar\InterpolatedStringNode|Scalar\StringNode
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     protected function parseDocString(
         string   $startToken,
@@ -473,7 +473,7 @@ final class TagParser extends TagParserData
      * @param Position $position
      *
      * @return string
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     private function stripIndentation(
         string   $str,
@@ -516,7 +516,7 @@ final class TagParser extends TagParserData
      * @param ArrayNode $array
      *
      * @return ListNode
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public function convertArrayToList(
         ArrayNode $array,
@@ -544,7 +544,7 @@ final class TagParser extends TagParserData
     }
 
     /**
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     private function finalizeShortArrays() : void
     {

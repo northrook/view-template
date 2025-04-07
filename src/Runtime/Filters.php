@@ -13,7 +13,8 @@ use Core\View\Element\Attributes;
 use Stringable;
 
 use Core\View\Template\{ContentType, Exception\RuntimeException};
-use Core\View\Template\Compiler\{Escaper, TemplateLexer};
+use Core\View\Template\Compiler\{Escaper};
+use function Support\is_stringable;
 use const Support\{ENCODED_APOSTROPHE, ENCODED_QUOTE, ENCODED_SPACE};
 
 /**
@@ -359,22 +360,43 @@ class Filters
     /**
      * Validates HTML tag name.
      *
-     * @param mixed $name
+     * @param mixed $value
      * @param bool  $xml
      *
      * @return string
      */
-    public static function safeTag( mixed $name, bool $xml = false ) : string
+    public static function safeTag( mixed $value, bool $xml = false ) : string
     {
-        if ( ! \is_string( $name ) ) {
-            throw new RuntimeException( 'Tag name must be string, '.\get_debug_type( $name ).' given' );
+        // $value be castable to (string)
+        if ( ! is_stringable( $value ) ) {
+            $type = \get_debug_type( $value );
+            throw new RuntimeException( "Tag name must be string, '{$type}' provided." );
         }
-        if ( ! \preg_match( '~'.TemplateLexer::ReTagName.'$~DA', $name ) ) {
+
+        $name = \strtolower( \trim( (string) $value ) );
+
+        if ( ! $name ) {
+            throw new RuntimeException( 'Tag name cannot be empty' );
+        }
+
+        if ( ! \ctype_alpha( $name[0] ) ) {
+            throw new \RuntimeException( "Tags must start with an ASCII letter, '{$name[0]}' provided." );
+        }
+
+        if ( ! \ctype_alnum( \str_replace( [':', '_', '.', '-'], '', $name ) ) ) {
             throw new RuntimeException( "Invalid tag name '{$name}'" );
         }
+
+        if ( $name[0] === 'h' && ! \is_numeric( \substr( $name, 1 ) ) ) {
+            throw new RuntimeException(
+                "Invalid tag name '{$name}'. Headings must be 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'",
+            );
+        }
+
         if ( ! $xml && \in_array( \strtolower( $name ), ['style', 'script'], true ) ) {
             throw new RuntimeException( "Forbidden variable tag name <{$name}>" );
         }
+
         return $name;
     }
 }

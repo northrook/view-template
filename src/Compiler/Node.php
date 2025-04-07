@@ -18,8 +18,13 @@ abstract class Node implements IteratorAggregate
 
     /**
      * @return Generator<self>
+     * @noinspection PhpBooleanCanBeSimplifiedInspection
+     * @noinspection PhpInconsistentReturnPointsInspection
      */
-    abstract public function &getIterator() : Generator;
+    public function &getIterator() : Generator
+    {
+        false && yield;
+    }
 
     public static function traverse(
         Node      $node,

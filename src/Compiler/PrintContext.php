@@ -101,6 +101,7 @@ final class PrintContext
         );
 
         $mask = \preg_replace_callback(
+            // @phpstan-ignore-next-line
             '#% (\d+) \. (escape|modify(?:Content)?) ( \( ([^()]*+|(?-2))+ \) )#xi',
             function( $m ) use ( $args ) {
                 [, $pos, $fn, $var] = $m;

@@ -10,7 +10,7 @@ use Generator;
 final class ComponentNode extends AreaNode
 {
     /** @var AreaNode[] */
-    public array $children = [];
+    public array $children;
 
     /**
      * @param AreaNode[]|FragmentNode|TemplateNode $content
@@ -20,16 +20,24 @@ final class ComponentNode extends AreaNode
         TemplateNode|FragmentNode|AreaNode|array $content,
         public ?Position                         $position = null,
     ) {
+        $this->setChildren( $content );
+    }
+
+    public function setChildren( TemplateNode|FragmentNode|AreaNode|array $from ) : static
+    {
+        $this->children = [];
+
         $nodes = match ( true ) {
-            $content instanceof TemplateNode => $content->main->children,
-            $content instanceof FragmentNode => $content->children,
-            $content instanceof AreaNode     => [$content],
-            default                          => $content,
+            $from instanceof TemplateNode => $from->main->children,
+            $from instanceof FragmentNode => $from->children,
+            $from instanceof AreaNode     => [$from],
+            default                       => $from,
         };
 
         foreach ( $nodes as $node ) {
             $this->append( $node );
         }
+        return $this;
     }
 
     public function append( AreaNode $node ) : static

@@ -12,6 +12,7 @@ namespace Core\View\Template\Compiler\Nodes;
 use Generator;
 
 use Core\View\Template\Compiler\{Position, PrintContext};
+use Stringable;
 
 class TextNode extends AreaNode
 {
@@ -35,5 +36,16 @@ class TextNode extends AreaNode
     public function &getIterator() : Generator
     {
         false && yield;
+    }
+
+    final public static function from(
+        bool|int|string|null|Stringable|float $value,
+        ?Position                             $position = null,
+    ) : TextNode {
+        $content = match ( \gettype( $value ) ) {
+            'boolean' => $value ? 'true' : 'false',
+            default   => (string) $value,
+        };
+        return new TextNode( $content, $position );
     }
 }

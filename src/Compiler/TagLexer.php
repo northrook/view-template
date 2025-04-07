@@ -78,7 +78,6 @@ final class TagLexer
      * @param ?int     $ofs
      *
      * @return Token[]
-     * @throws \Core\View\Template\Exception\CompileException
      * @throws CompileException
      */
     public function tokenizePartially( string $input, Position &$position, ?int $ofs = null ) : array

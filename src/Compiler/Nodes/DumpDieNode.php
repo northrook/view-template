@@ -15,9 +15,9 @@ use Core\View\Template\Exception\CompileException;
 use Generator;
 
 /**
- * {dump [$var]}
+ * {dd [$var]}
  */
-final class DumpNode extends StatementNode
+final class DumpDieNode extends StatementNode
 {
     public ?ExpressionNode $expression = null;
 
@@ -37,6 +37,7 @@ final class DumpNode extends StatementNode
      * @param Tag $tag
      *
      * @return static
+     *
      * @throws CompileException
      */
     public static function create( Tag $tag ) : static
@@ -46,11 +47,11 @@ final class DumpNode extends StatementNode
 
     public function print( PrintContext $context ) : string
     {
-        if ( ! \function_exists( 'dump' ) ) {
+        if ( ! \function_exists( 'dd' ) ) {
             return '/* '.\implode(
                 ' ',
                 [
-                    "dump( {$this->expression->print( $context )} )",
+                    "dd( {$this->expression->print( $context )} )",
                     $this->position ? "line {$this->position->line}" : '',
                 ],
             ).' */';
@@ -58,12 +59,12 @@ final class DumpNode extends StatementNode
 
         return $this->expression
                 ? $context->format(
-                    'dump( %node ) %line;',
+                    'dd( %node ) %line;',
                     $this->expression,
                     $this->position,
                 )
                 : $context->format(
-                    "dump( ['\$this->global' => \$this->global, ...get_defined_vars()] ) %line;",
+                    "dd( ['\$this->global' => \$this->global, ...get_defined_vars()] ) %line;",
                     $this->position,
                 );
     }

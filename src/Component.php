@@ -39,6 +39,8 @@ abstract class Component
 
     protected readonly ?LoggerInterface $logger;
 
+    public string $tag;
+
     public readonly string $name;
 
     public readonly string $uniqueID;
@@ -65,6 +67,76 @@ abstract class Component
                 preserveCacheKey : true,
             ),
         );
+    }
+
+    /**
+     * Process arguments passed to the {@see self::create()} method.
+     *
+     * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string} $arguments
+     *
+     * @return void
+     */
+    protected function prepareArguments( array &$arguments ) : void {}
+
+
+    /**
+     * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string}|ElementNode $arguments
+     * @param array<string, ?string[]>                                                                                                                     $promote
+     * @param null|string                                                                                                                                  $uniqueId  8 character hash key
+     *
+     * @return $this
+     */
+    final public function create(
+        array|ElementNode $arguments,
+        array             $promote = [],
+        ?string           $uniqueId = null,
+    ) : self {
+        if ( $arguments instanceof ElementNode ) {
+            $arguments = Component::nodeArguments( $arguments );
+        }
+
+        $this->prepareArguments( $arguments );
+
+        $this->name       = $this::componentName();
+        $this->uniqueID   = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
+        $this->attributes = $this->assignAttributes( $arguments );
+
+        $this->promoteTaggedProperties( $arguments, $promote );
+
+        unset( $arguments['content'], $arguments['tag'] );
+
+        foreach ( $arguments as $property => $value ) {
+            if ( \property_exists( $this, $property ) ) {
+                if ( ! isset( $this->{$property} ) ) {
+                    $this->{$property} = $value;
+                }
+                else {
+                    $this->{$property} = match ( \gettype( $this->{$property} ) ) {
+                        'boolean' => (bool) $value,
+                        'integer' => (int) $value,
+                        default   => $value,
+                    };
+                }
+
+                continue;
+            }
+
+            \assert( \is_string( $value ), 'All remaining arguments should be method calls at this point.' );
+
+            $method = 'do'.\ucfirst( $value );
+
+            if ( \method_exists( $this, $method ) ) {
+                $this->{$method}();
+            }
+            else {
+                $this->logger?->error(
+                    'The {component} was provided with undefined property {property}.',
+                    ['component' => $this->name, 'property' => $property],
+                );
+            }
+        }
+
+        return $this;
     }
 
     /**
@@ -122,74 +194,6 @@ abstract class Component
         }
 
         return $element.$tail;
-    }
-
-    /**
-     * Process arguments passed to the {@see self::create()} method.
-     *
-     * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string} $arguments
-     *
-     * @return void
-     */
-    protected function prepareArguments( array &$arguments ) : void {}
-
-    /**
-     * @param array{'tag': ?string,'attributes' : array<string, null|array<array-key, ?string>|bool|float|int|string>, 'content': null|string}|ElementNode $arguments
-     * @param array<string, ?string[]>                                                                                                                     $promote
-     * @param null|string                                                                                                                                  $uniqueId  8 character hash key
-     *
-     * @return $this
-     */
-    final public function create(
-        array|ElementNode $arguments,
-        array             $promote = [],
-        ?string           $uniqueId = null,
-    ) : self {
-        if ( $arguments instanceof ElementNode ) {
-            $arguments = Component::nodeArguments( $arguments );
-        }
-
-        $this->prepareArguments( $arguments );
-
-        $this->name       = $this::componentName();
-        $this->uniqueID   = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
-        $this->attributes = $this->assignAttributes( $arguments );
-
-        $this->promoteTaggedProperties( $arguments, $promote );
-
-        unset( $arguments['content'], $arguments['tag'] );
-
-        foreach ( $arguments as $property => $value ) {
-            if ( \property_exists( $this, $property ) ) {
-                if ( ! isset( $this->{$property} ) ) {
-                    $this->{$property} = $value;
-                }
-                else {
-                    $this->{$property} = match ( \gettype( $this->{$property} ) ) {
-                        'boolean' => (bool) $value,
-                        default   => $value,
-                    };
-                }
-
-                continue;
-            }
-
-            \assert( \is_string( $value ), 'All remaining arguments should be method calls at this point.' );
-
-            $method = 'do'.\ucfirst( $value );
-
-            if ( \method_exists( $this, $method ) ) {
-                $this->{$method}();
-            }
-            else {
-                $this->logger?->error(
-                    'The {component} was provided with undefined property {property}.',
-                    ['component' => $this->name, 'property' => $property],
-                );
-            }
-        }
-
-        return $this;
     }
 
     /**

@@ -64,6 +64,7 @@ final class TemplateParser
 
     private ?Tag $tag = null;
 
+    /** @var callable */
     private $lastResolver;
 
     private WeakMap $lookFor;
@@ -493,7 +494,11 @@ final class TemplateParser
      */
     public function checkBlockIsUnique( Block $block ) : void
     {
-        if ( $block->isDynamic() || ! \preg_match( '#^[a-z]#i', $name = (string) $block->name->value ) ) {
+        $name = \property_exists( $block->name, 'value' )
+                ? (string) $block->name->value
+                : $block->name::class;
+
+        if ( $block->isDynamic() || ! \preg_match( '#^[a-z]#i', $name ) ) {
             throw new CompileException(
                 \ucfirst( $block->tag->name )." name must start with letter a-z, '{$name}' given.",
                 $block->tag->position,
