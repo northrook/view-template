@@ -13,6 +13,9 @@ use BadMethodCallException;
 use LogicException;
 use function Support\{normalize_path, str_end};
 
+/**
+ * @method self __invoke()
+ */
 abstract class Component implements Stringable
 {
     /** @var ?string Manually define a name for this component */
@@ -33,13 +36,6 @@ abstract class Component implements Stringable
     public readonly string $uniqueID;
 
     public readonly Attributes $attributes;
-
-    /**
-     * Creates {@see self} with provided arguments.
-     *
-     * @return $this
-     */
-    abstract public function __invoke() : static;
 
     public function __toString() : string
     {
