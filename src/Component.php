@@ -11,6 +11,7 @@ use Stringable;
 use ReflectionClass;
 use BadMethodCallException;
 use LogicException;
+use Symfony\Component\Stopwatch\Stopwatch;
 use function Support\{normalize_path, str_end};
 
 /**
@@ -60,12 +61,14 @@ abstract class Component implements Stringable
 
     final public function setDependencies(
         ?Engine          $engine,
-        ?ClerkProfiler   $profiler = null,
+        ?Stopwatch       $stopwatch = null,
         ?LoggerInterface $logger = null,
     ) : self {
         $this->engine   ??= $engine;
-        $this->profiler ??= $profiler;
-        $this->logger   ??= $logger;
+        $this->profiler ??= $stopwatch
+                ? new ClerkProfiler( $stopwatch, 'view.component' )
+                : null;
+        $this->logger ??= $logger;
 
         return $this;
     }
