@@ -4,7 +4,10 @@ namespace Core\View\Template;
 
 use Core\Profiler\ClerkProfiler;
 use Core\View\Attribute\ViewComponent;
+use Core\View\ComponentFactory\ComponentProperties;
 use Core\View\Element\Attributes;
+use Core\View\Template\Compiler\NodeAttributes;
+use Core\View\Template\Compiler\Nodes\Html\ElementNode;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Stringable;
@@ -12,7 +15,13 @@ use ReflectionClass;
 use BadMethodCallException;
 use LogicException;
 use Symfony\Component\Stopwatch\Stopwatch;
-use function Support\{normalize_path, str_end};
+use CompileError;
+use TypeError;
+use function Support\{
+    match_property_type,
+    normalize_path,
+    str_end,
+};
 
 /**
  * @method self __invoke()
@@ -32,6 +41,8 @@ abstract class Component implements Stringable
 
     protected ?LoggerInterface $logger = null;
 
+    protected readonly string $tag;
+
     public readonly string $name;
 
     public readonly string $uniqueID;
@@ -49,11 +60,6 @@ abstract class Component implements Stringable
         return $this->getTemplateString();
     }
 
-    public function getArguments() : array
-    {
-        return [];
-    }
-
     final public function setDependencies(
         ?Engine          $engine,
         ?Stopwatch       $stopwatch = null,
@@ -61,7 +67,7 @@ abstract class Component implements Stringable
     ) : self {
         $this->engine        ??= $engine;
         $this->clerkProfiler ??= $stopwatch
-                ? new ClerkProfiler( $stopwatch, 'view' )
+                ? new ClerkProfiler( $stopwatch, 'View' )
                 : null;
         $this->logger ??= $logger;
 
@@ -69,26 +75,52 @@ abstract class Component implements Stringable
     }
 
     final public function create(
-        array   $arguments,
-        array   $promote = [],
+        array   $properties = [],
+        array   $attributes = [],
+        array   $content = [],
         ?string $uniqueId = null,
     ) : self {
-        $this->prepareArguments( $arguments );
-
         $this->name     = $this::getComponentName();
-        $this->uniqueID = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
-
+        $this->uniqueID = $this->componentUniqueID( $uniqueId ?? \serialize( \get_defined_vars() ) );
         $this->clerkProfiler?->event( "{$this->name}.{$this->uniqueID}" );
 
-        $this->attributes = $this->assignAttributes( $arguments );
-        $this->attributes->add( 'component-id', $this->uniqueID );
+        $this->attributes = new Attributes( ...$attributes );
 
-        $this->promoteTaggedProperties( $arguments, $promote );
+        foreach ( $properties as $property => $value ) {
+            if ( \property_exists( $this, $property ) ) {
+                if ( ! isset( $this->{$property} ) ) {
+                    $this->{$property} = $value;
+                }
+                else {
+                    $this->{$property} = match ( \gettype( $this->{$property} ) ) {
+                        'boolean' => (bool) $value,
+                        'integer' => (int) $value,
+                        default   => $value,
+                    };
+                }
+
+                continue;
+            }
+
+            \assert( \is_string( $value ), 'All remaining arguments should be method calls at this point.' );
+
+            $method = 'do'.\ucfirst( $value );
+
+            if ( \method_exists( $this, $method ) ) {
+                $this->{$method}();
+            }
+            else {
+                $this->logger?->error(
+                    'The {component} was provided with undefined property {property}.',
+                    ['component' => $this->name, 'property' => $property],
+                );
+            }
+        }
+
+        dump( $this, \get_defined_vars() );
 
         return $this;
     }
-
-    protected function prepareArguments( array &$arguments ) : void {}
 
     final public static function getComponentName() : string
     {
@@ -212,84 +244,70 @@ abstract class Component implements Stringable
         return \hash( 'xxh32', $set );
     }
 
-    /**
-     * @param array<string, mixed> $arguments
-     *
-     * @return Attributes
-     */
-    private function assignAttributes( array &$arguments ) : Attributes
+    public function getArguments( ElementNode $from, ComponentProperties $componentProperties ) : array
     {
-        /** @var array<string, null|array<array-key, string>|bool|int|string> $attributes */
-        $attributes = $arguments['attributes'] ?? [];
+        /** @var array<int, string> $tagged */
+        $tagged = \explode( ':', $from->name );
+        $tag    = $tagged[0] ?? null;
 
-        unset( $arguments['attributes'] );
+        $properties = ['tag' => $tag];
 
-        return new Attributes( ...$attributes );
-    }
+        foreach ( $componentProperties->tagged[$tag] ?? [] as $position => $property ) {
+            $value = $tagged[$position] ?? null;
+            $value = match ( true ) {
+                \is_numeric( $value ) => (int) $value,
+                \is_bool( $value )    => (bool) $value,
+                default               => $value,
+            };
 
-    /**
-     * @param array<string, mixed>     $arguments
-     * @param array<string, ?string[]> $promote
-     *
-     * @return void
-     */
-    private function promoteTaggedProperties( array &$arguments, array $promote = [] ) : void
-    {
-        if ( ! isset( $arguments['tag'] ) ) {
-            return;
-        }
-
-        \assert( \is_string( $arguments['tag'] ) );
-
-        /** @var array<int, string> $exploded */
-        $exploded         = \explode( ':', $arguments['tag'] );
-        $arguments['tag'] = $exploded[0];
-
-        $promote = $promote[$arguments['tag']] ?? null;
-
-        foreach ( $exploded as $position => $tag ) {
-            if ( $promote && ( $promote[$position] ?? false ) ) {
-                $arguments[$promote[$position]] = $tag;
-                unset( $arguments[$position] );
-
-                continue;
-            }
-            if ( $position ) {
-                $arguments[$position] = $tag;
-            }
-        }
-
-        unset( $arguments['content'], $arguments['tag'] );
-
-        foreach ( $arguments as $property => $value ) {
-            if ( \property_exists( $this, $property ) ) {
-                if ( ! isset( $this->{$property} ) ) {
-                    $this->{$property} = $value;
-                }
-                else {
-                    $this->{$property} = match ( \gettype( $this->{$property} ) ) {
-                        'boolean' => (bool) $value,
-                        'integer' => (int) $value,
-                        default   => $value,
-                    };
-                }
-
-                continue;
-            }
-
-            \assert( \is_string( $value ), 'All remaining arguments should be method calls at this point.' );
-
-            $method = 'do'.\ucfirst( $value );
-
-            if ( \method_exists( $this, $method ) ) {
-                $this->{$method}();
-            }
-            else {
-                $this->logger?->error(
-                    'The {component} was provided with undefined property {property}.',
-                    ['component' => $this->name, 'property' => $property],
+            if ( ! \property_exists( $this, $property ) ) {
+                throw new CompileError(
+                    \sprintf(
+                        'Property "%s" does not exist in %s.',
+                        $property,
+                        $this::class,
+                    ),
                 );
             }
+
+            if ( ! match_property_type( $this, $property, from : $value ) ) {
+                throw new TypeError(
+                    \sprintf(
+                        'Invalid property type: "%s" does not allow %s.',
+                        $this::class."->{$property}",
+                        \gettype( $value ),
+                    ),
+                );
+            }
+
+            $properties[$property] = $value;
         }
+
+        $attributes = ( new NodeAttributes( $from ) )->getArray();
+
+        $content = [];
+
+        foreach ( $from->content ?? [] as $contentNode ) {
+            // dump( $contentNode );
+        }
+
+        $arguments = [
+            'properties' => $properties,
+            'attributes' => $attributes,
+            'content'    => $content,
+        ];
+
+        // echo '<xmp>';
+        // print_r( $arguments );
+        // echo '</xmp>';
+        //
+        // dd(
+        //         [
+        //                 'properties' => $properties,
+        //                 'attributes' => $arguments,
+        //                 'content'    => $content,
+        //         ], array_values( array_filter( $arguments ) ),
+        // );
+        return \array_filter( $arguments );
     }
 }
