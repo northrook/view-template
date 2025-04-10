@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler;
 
 use Core\Profiler\{ClerkProfiler};
-use Core\View\Template\Support\PhpGenerator;
 use Core\View\Template\Compiler\Nodes\{NopNode, TemplateNode, TextNode};
 use Core\View\Template\ContentType;
+use Support\PhpClass;
 
 /**
  * @internal
@@ -92,10 +92,14 @@ final class TemplateGenerator
         $profiler = $this->profiler?->event( "template.generate.{$templateName}" );
 
         $context   = new PrintContext( $node->contentType );
-        $generator = new PhpGenerator(
+        $generator = new PhpClass(
             className : $className,
             generator : $this::class,
         );
+        // $generator = new PhpGenerator(
+        //     className : $className,
+        //     generator : $this::class,
+        // );
 
         $code = $node->main->print( $context );
         $code = $this->templateParameters( $code, [], self::ARGS, $context );

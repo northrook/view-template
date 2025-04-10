@@ -28,7 +28,7 @@ abstract class Component implements Stringable
 
     protected ?string $templateFilename = null;
 
-    protected ?ClerkProfiler $profiler = null;
+    private ?ClerkProfiler $clerkProfiler = null;
 
     protected ?LoggerInterface $logger = null;
 
@@ -38,20 +38,15 @@ abstract class Component implements Stringable
 
     public readonly Attributes $attributes;
 
-    public function __toString() : string
+    final public function __toString() : string
     {
+        $this->clerkProfiler?->stop( "{$this->name}.{$this->uniqueID}" );
         return $this->getString();
     }
 
     public function getString() : string
     {
-        return \trim(
-            $this->getEngine()->renderToString(
-                $this->getTemplatePath(),
-                $this->getParameters(),
-                preserveCacheKey : true,
-            ),
-        );
+        return $this->getTemplateString();
     }
 
     public function getArguments() : array
@@ -64,9 +59,9 @@ abstract class Component implements Stringable
         ?Stopwatch       $stopwatch = null,
         ?LoggerInterface $logger = null,
     ) : self {
-        $this->engine   ??= $engine;
-        $this->profiler ??= $stopwatch
-                ? new ClerkProfiler( $stopwatch, 'view.component' )
+        $this->engine        ??= $engine;
+        $this->clerkProfiler ??= $stopwatch
+                ? new ClerkProfiler( $stopwatch, 'view' )
                 : null;
         $this->logger ??= $logger;
 
@@ -80,9 +75,13 @@ abstract class Component implements Stringable
     ) : self {
         $this->prepareArguments( $arguments );
 
-        $this->name       = $this::getComponentName();
-        $this->uniqueID   = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
+        $this->name     = $this::getComponentName();
+        $this->uniqueID = $this->componentUniqueID( $uniqueId ?? \serialize( [$arguments] ) );
+
+        $this->clerkProfiler?->event( "{$this->name}.{$this->uniqueID}" );
+
         $this->attributes = $this->assignAttributes( $arguments );
+        $this->attributes->add( 'component-id', $this->uniqueID );
 
         $this->promoteTaggedProperties( $arguments, $promote );
 
@@ -174,6 +173,18 @@ abstract class Component implements Stringable
     protected function getTemplate() : string
     {
         return $this->getTemplatePath();
+    }
+
+    protected function getTemplateString() : string
+    {
+        return \trim(
+            $this->getEngine()->renderToString(
+                $this->getTemplatePath(),
+                $this->getParameters(),
+                // TOOD: DEBUG
+                preserveCacheKey : true,
+            ),
+        );
     }
 
     /**
