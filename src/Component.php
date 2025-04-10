@@ -3,8 +3,7 @@
 namespace Core\View\Template;
 
 use Core\Profiler\ClerkProfiler;
-use Core\View\Attribute\ViewComponent;
-use Core\View\ComponentFactory\ComponentProperties;
+use Core\View\ComponentFactory\{Properties, ViewComponent};
 use Core\View\Element\Attributes;
 use Core\View\Template\Compiler\NodeAttributes;
 use Core\View\Template\Compiler\Nodes\Html\ElementNode;
@@ -74,6 +73,14 @@ abstract class Component implements Stringable
         return $this;
     }
 
+    /**
+     * @param array<string, mixed> $properties
+     * @param array<string, mixed> $attributes
+     * @param array<string, mixed> $content
+     * @param null|string          $uniqueId
+     *
+     * @return $this
+     */
     final public function create(
         array   $properties = [],
         array   $attributes = [],
@@ -244,13 +251,21 @@ abstract class Component implements Stringable
         return \hash( 'xxh32', $set );
     }
 
-    public function getArguments( ElementNode $from, ComponentProperties $componentProperties ) : array
-    {
+    public function getArguments(
+        ElementNode $from,
+        Properties  $componentProperties,
+    ) : array {
+        $arguments = [
+            'properties' => [],
+            'attributes' => ( new NodeAttributes( $from ) )->getArray(),
+            'content'    => [],
+        ];
+
         /** @var array<int, string> $tagged */
         $tagged = \explode( ':', $from->name );
         $tag    = $tagged[0] ?? null;
 
-        $properties = ['tag' => $tag];
+        $arguments['properties']['tag'] = $tag;
 
         foreach ( $componentProperties->tagged[$tag] ?? [] as $position => $property ) {
             $value = $tagged[$position] ?? null;
@@ -280,33 +295,21 @@ abstract class Component implements Stringable
                 );
             }
 
-            $properties[$property] = $value;
+            $arguments['properties'][$property] = $value;
         }
-
-        $attributes = ( new NodeAttributes( $from ) )->getArray();
-
-        $content = [];
 
         foreach ( $from->content ?? [] as $contentNode ) {
+            // $arguments['content'][] = $contentNode;
             // dump( $contentNode );
         }
-
-        $arguments = [
-            'properties' => $properties,
-            'attributes' => $attributes,
-            'content'    => $content,
-        ];
 
         // echo '<xmp>';
         // print_r( $arguments );
         // echo '</xmp>';
         //
         // dd(
-        //         [
-        //                 'properties' => $properties,
-        //                 'attributes' => $arguments,
-        //                 'content'    => $content,
-        //         ], array_values( array_filter( $arguments ) ),
+        //     $arguments,
+        //     \array_values( \array_filter( $arguments ) ),
         // );
         return \array_filter( $arguments );
     }

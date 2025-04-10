@@ -7,7 +7,7 @@ namespace Core\View\Template;
 use BadMethodCallException;
 use Cache\CachePoolTrait;
 use Core\Profiler\ClerkProfiler;
-use Core\View\Attribute\ViewComponent;
+use Core\View\ComponentFactory\ViewComponent;
 use Core\View\Element\Attributes;
 use Core\View\Template\Component\NodeParser;
 use Core\View\Template\Compiler\{Nodes\ComponentNode};
