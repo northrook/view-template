@@ -18,24 +18,26 @@ use RuntimeException;
  */
 class Html implements Stringable
 {
-    private string $value = '';
+    /** @var array */
+    private array $fragments = [];
 
-    public function __construct( mixed $value )
+    public function __construct( mixed $value = null )
     {
+        // Directly handle arrays or iterables to reduce overhead
         if ( \is_iterable( $value ) || $value instanceof ArrayAccess ) {
             foreach ( $value as $item ) {
                 $this->addValue( $item );
             }
         }
-        else {
+        elseif ( $value !== null ) {
             $this->addValue( $value );
         }
     }
 
-    private function addValue( mixed $value ) : void
+    final protected function addValue( mixed $value ) : void
     {
-        if ( \is_scalar( $value ) || $value instanceof Stringable || \is_null( $value ) ) {
-            $this->value .= $value;
+        if ( \is_scalar( $value ) || $value instanceof Stringable ) {
+            $this->fragments[] = (string) $value;
         }
         else {
             throw new RuntimeException(
@@ -46,6 +48,6 @@ class Html implements Stringable
 
     public function __toString() : string
     {
-        return $this->value;
+        return \implode( '', $this->fragments );
     }
 }

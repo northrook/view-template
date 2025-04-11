@@ -315,6 +315,14 @@ abstract class Component implements Stringable
         return \array_filter( $arguments );
     }
 
+    /**
+     * @param array<string, scalar>               $properties
+     * @param array<string, scalar>               $attributes
+     * @param array<array-key, scalar|Stringable> $actions
+     * @param array<array-key, scalar|Stringable> $content
+     *
+     * @return void
+     */
     protected function prepareArguments(
         array & $properties,
         array & $attributes,
