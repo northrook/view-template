@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\Compiler\{PrintContext, Tag};
 use Generator;
 

@@ -12,7 +12,6 @@ namespace Core\View\Template\Compiler\Nodes;
 use Core\View\Template\Exception\CompileException;
 use Generator;
 use Core\View\Template\Compiler\{Escaper, PrintContext, Tag, TemplateGenerator};
-use Core\View\Template\Compiler\Nodes\{AreaNode, StatementNode};
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ModifierNode};
 
 /**

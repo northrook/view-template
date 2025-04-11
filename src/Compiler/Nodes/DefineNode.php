@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\{Block, PrintContext, Tag, TemplateParser, Token};
-use Core\View\Template\Compiler\Nodes\{AreaNode, StatementNode};
+use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\Nodes\Php\{ParameterNode};
 use Core\View\Template\Compiler\Nodes\Php\Scalar\{NullNode, StringNode};
 use Core\View\Template\Compiler\Nodes\Php\Expression\{AssignNode, VariableNode};
@@ -27,8 +27,11 @@ class DefineNode extends StatementNode
     public AreaNode $content;
 
     /**
+     * @param Tag            $tag
+     * @param TemplateParser $parser
+     *
      * @return Generator<int, ?array, array{AreaNode, ?Tag}, static>
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public static function create( Tag $tag, TemplateParser $parser ) : Generator
     {
@@ -56,7 +59,10 @@ class DefineNode extends StatementNode
     }
 
     /**
-     * @throws \Core\View\Template\Exception\CompileException
+     * @param Tag $tag
+     *
+     * @return array
+     * @throws CompileException
      */
     private static function parseParameters( Tag $tag ) : array
     {
@@ -90,6 +96,12 @@ class DefineNode extends StatementNode
         return $params;
     }
 
+    /**
+     * @param PrintContext $context
+     *
+     * @return string
+     * @throws CompileException
+     */
     public function print( PrintContext $context ) : string
     {
         return $this->block->isDynamic()
@@ -104,6 +116,12 @@ class DefineNode extends StatementNode
         return '';
     }
 
+    /**
+     * @param PrintContext $context
+     *
+     * @return string
+     * @throws CompileException
+     */
     private function printDynamic( PrintContext $context ) : string
     {
         $context->addBlock( $this->block );

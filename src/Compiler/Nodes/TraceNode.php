@@ -9,9 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\StatementNode;
-use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag};
+
 /**
  * {trace}
  */
@@ -28,10 +27,5 @@ class TraceNode extends StatementNode
             '\Core\View\Template\Support\Tracer::throw() %line;',
             $this->position,
         );
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

@@ -12,7 +12,6 @@ namespace Core\View\Template\Compiler\Nodes;
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\Nodes\Php\ParameterNode;
 use Core\View\Template\Compiler\Nodes\Php\Scalar\NullNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag, Token};
 use Core\View\Template\Compiler\Nodes\Php\Expression\{AssignNode, VariableNode};
@@ -45,6 +44,7 @@ class ParametersNode extends StatementNode
     /**
      * @param Tag $tag
      *
+     * @return array
      * @throws CompileException
      */
     private static function parseParameters( Tag $tag ) : array

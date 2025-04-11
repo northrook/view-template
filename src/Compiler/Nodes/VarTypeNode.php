@@ -9,9 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\Compiler\{PrintContext, Tag, Token};
-use Generator;
 
 /**
  * {varType type $var}
@@ -35,10 +33,5 @@ class VarTypeNode extends StatementNode
     public function print( PrintContext $context ) : string
     {
         return '';
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

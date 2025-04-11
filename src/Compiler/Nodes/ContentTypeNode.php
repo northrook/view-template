@@ -10,9 +10,7 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\{Exception\CompileException, ContentType};
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateParser};
-use Generator;
 
 /**
  * {contentType ...}
@@ -26,9 +24,10 @@ class ContentTypeNode extends StatementNode
     public bool $inScript;
 
     /**
+     * @param Tag            $tag
+     * @param TemplateParser $parser
+     *
      * @throws CompileException
-     * @param  Tag              $tag
-     * @param  TemplateParser   $parser
      */
     public static function create( Tag $tag, TemplateParser $parser ) : static
     {
@@ -80,10 +79,5 @@ class ContentTypeNode extends StatementNode
                     $this->position,
                 )
                 : '';
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

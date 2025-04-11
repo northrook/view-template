@@ -9,9 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateGenerator};
-use Generator;
 
 /**
  * {varPrint [all]}
@@ -48,10 +46,5 @@ class VarPrintNode extends StatementNode
             {$_bp}->printEnd();
             exit;
             XX;
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

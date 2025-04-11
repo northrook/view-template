@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\ContentType;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateGenerator};
@@ -25,6 +24,7 @@ final class NAttrNode extends StatementNode
     /**
      * @param Tag $tag
      *
+     * @return NAttrNode
      * @throws \Core\View\Template\Exception\CompileException
      */
     public static function create( Tag $tag ) : static

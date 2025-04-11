@@ -11,7 +11,7 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Engine\TranslatorExtension;
 use Core\View\Template\Compiler\{NodeHelpers, PrintContext, Tag, TemplateGenerator};
-use Core\View\Template\Compiler\Nodes\{AreaNode, NopNode, Php\FilterNode, Php\IdentifierNode, StatementNode, TextNode};
+use Core\View\Template\Compiler\Nodes\{Php\FilterNode, Php\IdentifierNode};
 use Core\View\Template\Compiler\Nodes\Php\ModifierNode;
 use Generator;
 
@@ -85,7 +85,6 @@ class TranslateNode extends StatementNode
             );
         }
 
-        $ns = TemplateGenerator::NAMESPACE;
         return $context->format(
             <<<XX
                 ob_start(fn() => ''); try {

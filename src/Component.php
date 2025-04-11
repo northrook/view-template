@@ -16,11 +16,7 @@ use LogicException;
 use Symfony\Component\Stopwatch\Stopwatch;
 use CompileError;
 use TypeError;
-use function Support\{
-    match_property_type,
-    normalize_path,
-    str_end,
-};
+use function Support\{match_property_type, normalize_path, slug, str_end};
 
 /**
  * @method self __invoke()
@@ -60,15 +56,13 @@ abstract class Component implements Stringable
     }
 
     final public function setDependencies(
-        ?Engine          $engine,
-        ?Stopwatch       $stopwatch = null,
-        ?LoggerInterface $logger = null,
+        ?Engine                      $engine,
+        null|Stopwatch|ClerkProfiler $profiler,
+        ?LoggerInterface             $logger = null,
     ) : self {
         $this->engine        ??= $engine;
-        $this->clerkProfiler ??= $stopwatch
-                ? new ClerkProfiler( $stopwatch, 'View' )
-                : null;
-        $this->logger ??= $logger;
+        $this->clerkProfiler ??= ClerkProfiler::from( $profiler, 'View' );
+        $this->logger        ??= $logger;
 
         return $this;
     }
@@ -76,6 +70,7 @@ abstract class Component implements Stringable
     /**
      * @param array<string, mixed> $properties
      * @param array<string, mixed> $attributes
+     * @param array<string, mixed> $actions
      * @param array<string, mixed> $content
      * @param null|string          $uniqueId
      *
@@ -84,6 +79,7 @@ abstract class Component implements Stringable
     final public function create(
         array   $properties = [],
         array   $attributes = [],
+        array   $actions = [],
         array   $content = [],
         ?string $uniqueId = null,
     ) : self {
@@ -92,6 +88,7 @@ abstract class Component implements Stringable
         $this->clerkProfiler?->event( "{$this->name}.{$this->uniqueID}" );
 
         $this->attributes = new Attributes( ...$attributes );
+        $this->attributes->set( 'component-id', $this->uniqueID );
 
         foreach ( $properties as $property => $value ) {
             if ( \property_exists( $this, $property ) ) {
@@ -124,7 +121,7 @@ abstract class Component implements Stringable
             }
         }
 
-        dump( $this, \get_defined_vars() );
+        // dump( $this, \get_defined_vars() );
 
         return $this;
     }
@@ -192,10 +189,11 @@ abstract class Component implements Stringable
             return "{$path}/{$filename}";
         }
 
-        $templateDirectory = ( \strrchr( $path, DIR_SEP.'src', true ) ?: $path ).DIR_SEP.'templates';
+        $directory = ( \strrchr( $path, DIR_SEP.'src', true ) ?: $path ).DIR_SEP.'templates';
+        $namespace = slug( \strrchr( $this::class, '\\', true ) ?: "component.{$this->name}", '.' );
 
-        if ( \file_exists( "{$templateDirectory}/component/{$filename}" ) ) {
-            $this->getEngine()->addTemplateDirectory( $templateDirectory, $this->name );
+        if ( \file_exists( "{$directory}/component/{$filename}" ) ) {
+            $this->getEngine()->addTemplateDirectory( $directory, $namespace );
             return "component/{$filename}";
         }
 
@@ -258,6 +256,7 @@ abstract class Component implements Stringable
         $arguments = [
             'properties' => [],
             'attributes' => ( new NodeAttributes( $from ) )->getArray(),
+            'actions'    => [],
             'content'    => [],
         ];
 
@@ -303,6 +302,8 @@ abstract class Component implements Stringable
             // dump( $contentNode );
         }
 
+        $this->prepareArguments( ...$arguments );
+
         // echo '<xmp>';
         // print_r( $arguments );
         // echo '</xmp>';
@@ -313,4 +314,11 @@ abstract class Component implements Stringable
         // );
         return \array_filter( $arguments );
     }
+
+    protected function prepareArguments(
+        array & $properties,
+        array & $attributes,
+        array & $actions,
+        array & $content,
+    ) : void {}
 }

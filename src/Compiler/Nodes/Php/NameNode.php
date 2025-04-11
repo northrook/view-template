@@ -150,9 +150,4 @@ class NameNode extends Node
         };
         return $prefix.$this->name;
     }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
-    }
 }

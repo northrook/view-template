@@ -9,8 +9,6 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\StatementNode;
-use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag};
 
 /**
@@ -47,10 +45,5 @@ class RawPhpNode extends StatementNode
             $this->position,
             $this->code,
         );
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

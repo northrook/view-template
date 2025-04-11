@@ -9,9 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\{Node, NodeTraverser, Nodes, PrintContext, Tag, TemplateGenerator, Token};
-use Core\View\Template\Compiler\Nodes\StatementNode;
-use Generator;
+use Core\View\Template\Compiler\{Node, NodeTraverser, PrintContext, Tag, TemplateGenerator, Token};
 
 /**
  * {templatePrint [ParentClass]}
@@ -51,24 +49,19 @@ class TemplatePrintNode extends StatementNode
         );
     }
 
-    public function &getIterator() : Generator
-    {
-        false && yield;
-    }
-
     /**
      * Pass: moves this node to head.
      *
-     * @param Nodes\TemplateNode $templateNode
+     * @param TemplateNode $templateNode
      */
-    public static function moveToHeadPass( Nodes\TemplateNode $templateNode ) : void
+    public static function moveToHeadPass( TemplateNode $templateNode ) : void
     {
         ( new NodeTraverser() )->traverse(
             $templateNode->main,
             function( Node $node ) use ( $templateNode ) {
                 if ( $node instanceof self ) {
                     \array_unshift( $templateNode->head->children, $node );
-                    return new Nodes\NopNode();
+                    return new NopNode();
                 }
                 return $node;
             },

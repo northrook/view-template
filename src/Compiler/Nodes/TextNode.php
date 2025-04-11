@@ -9,8 +9,6 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Generator;
-
 use Core\View\Template\Compiler\{Position, PrintContext};
 use Stringable;
 
@@ -31,11 +29,6 @@ class TextNode extends AreaNode
     public function isWhitespace() : bool
     {
         return \trim( $this->content ) === '';
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 
     final public static function from(

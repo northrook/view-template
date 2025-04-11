@@ -9,16 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\BlockNode;
-use Core\View\Template\Compiler\Nodes\DefineNode;
-use Core\View\Template\Compiler\Nodes\ForeachNode;
-use Core\View\Template\Compiler\Nodes\ForNode;
-use Core\View\Template\Compiler\Nodes\IfContentNode;
-use Core\View\Template\Compiler\Nodes\IfNode;
-use Core\View\Template\Compiler\Nodes\WhileNode;
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag};
 
@@ -49,16 +41,16 @@ class JumpNode extends StatementNode
 
         for (
             $parent = $tag->parent;
-                $parent?->node instanceof \Core\View\Template\Compiler\Nodes\IfNode || $parent?->node instanceof \Core\View\Template\Compiler\Nodes\IfContentNode;
+            $parent?->node instanceof IfNode || $parent?->node instanceof IfContentNode;
             $parent = $parent->parent
         ) {
             //
         }
         $pnode = $parent?->node;
         if ( ! match ( $tag->name ) {
-            'breakIf', 'continueIf' => $pnode instanceof \Core\View\Template\Compiler\Nodes\ForNode || $pnode instanceof ForeachNode || $pnode instanceof \Core\View\Template\Compiler\Nodes\WhileNode,
+            'breakIf', 'continueIf' => $pnode instanceof ForNode || $pnode instanceof ForeachNode || $pnode instanceof WhileNode,
             'skipIf' => $pnode instanceof ForeachNode,
-            'exitIf' => ! $pnode || $pnode instanceof \Core\View\Template\Compiler\Nodes\BlockNode || $pnode instanceof \Core\View\Template\Compiler\Nodes\DefineNode,
+            'exitIf' => ! $pnode || $pnode instanceof BlockNode || $pnode instanceof DefineNode,
         } ) {
             throw new CompileException( "Tag {{$tag->name}} is unexpected here.", $tag->position );
         }

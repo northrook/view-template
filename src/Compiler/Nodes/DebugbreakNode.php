@@ -10,9 +10,9 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag};
+
 /**
  * {debugbreak [$cond]}
  */
@@ -21,6 +21,9 @@ class DebugbreakNode extends StatementNode
     public ?ExpressionNode $condition;
 
     /**
+     * @param Tag $tag
+     *
+     * @return DebugbreakNode
      * @throws \Core\View\Template\Exception\CompileException
      */
     public static function create( Tag $tag ) : static

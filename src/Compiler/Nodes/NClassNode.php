@@ -11,9 +11,8 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
-use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateGenerator};
+use Generator;
 
 /**
  * n:class="..."
@@ -25,6 +24,7 @@ final class NClassNode extends StatementNode
     /**
      * @param Tag $tag
      *
+     * @return NClassNode
      * @throws CompileException
      */
     public static function create( Tag $tag ) : static

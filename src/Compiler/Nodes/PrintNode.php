@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Exception\CompileException;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateParser};
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ModifierNode};
@@ -31,7 +30,7 @@ class PrintNode extends StatementNode
      * @param TemplateParser $parser
      *
      * @return PrintNode
-     * @throws \Core\View\Template\Exception\CompileException
+     * @throws CompileException
      */
     public static function create( Tag $tag, TemplateParser $parser ) : static
     {
@@ -48,9 +47,10 @@ class PrintNode extends StatementNode
     }
 
     /**
-     * @param PrintContext  $context
+     * @param PrintContext $context
      *
-     *@throws \Core\View\Template\Exception\CompileException
+     * @return string
+     * @throws CompileException
      */
     public function print( PrintContext $context ) : string
     {

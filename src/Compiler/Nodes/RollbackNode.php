@@ -9,10 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes;
 
-use Core\View\Template\Compiler\Nodes\TryNode;
 use Core\View\Template\Exception\CompileException;
-use Core\View\Template\Compiler\Nodes\StatementNode;
-use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag};
 
 /**
@@ -28,7 +25,7 @@ class RollbackNode extends StatementNode
      */
     public static function create( Tag $tag ) : static
     {
-        if ( ! $tag->closestTag( [ \Core\View\Template\Compiler\Nodes\TryNode::class] ) ) {
+        if ( ! $tag->closestTag( [TryNode::class] ) ) {
             throw new CompileException( 'Tag {rollback} must be inside {try} ... {/try}.', $tag->position );
         }
 
@@ -38,10 +35,5 @@ class RollbackNode extends StatementNode
     public function print( PrintContext $context ) : string
     {
         return 'throw new Core\View\Template\Essential\RollbackException;';
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

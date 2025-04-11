@@ -212,6 +212,14 @@ class Filters
      */
     public static function escapeCss( mixed $value ) : string
     {
+        if ( ! is_stringable( $value ) ) {
+            throw new RuntimeException( "Only stringable values are allowed, '".\gettype( $value )."' provided." );
+        }
+
+        if ( \in_array( \gettype( $value ), ['integer', 'double', 'boolean', 'NULL'] ) ) {
+            return (string) $value;
+        }
+
         // http://www.w3.org/TR/2006/WD-CSS21-20060411/syndata.html#q6
         return \addcslashes( (string) $value, "\x00..\x1F!\"#$%&'()*+,./:;<=>?@[\\]^`{|}~" );
     }

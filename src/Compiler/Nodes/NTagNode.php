@@ -11,8 +11,6 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\{Exception\CompileException, ContentType, Support\Helpers, Exception\RuntimeException};
 use Core\View\Template\Compiler\Nodes\Php\Expression\AuxiliaryNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
-use Generator;
 use LogicException;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateParser};
 
@@ -32,7 +30,11 @@ final class NTagNode extends StatementNode
         TemplateParser $parser,
     ) : void {
         if ( \preg_match( '(style$|script$)iA', $tag->htmlElement->name ) ) {
-            throw new CompileException( 'Attribute n:tag is not allowed in <script> or <style>', $tag->position );
+            throw new CompileException(
+                /** @lang text */
+                "Attribute n:tag is not allowed in '<script>' or '<style>'",
+                $tag->position,
+            );
         }
 
         $tag->expectArguments();
@@ -47,6 +49,11 @@ final class NTagNode extends StatementNode
         );
     }
 
+    /**
+     * @param PrintContext $context
+     *
+     * @return string
+     */
     public function print( PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print' );
@@ -70,10 +77,5 @@ final class NTagNode extends StatementNode
         }
 
         return $new;
-    }
-
-    public function &getIterator() : Generator
-    {
-        false && yield;
     }
 }

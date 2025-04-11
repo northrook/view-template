@@ -11,7 +11,6 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
 use Core\View\Template\Compiler\Nodes\Php\Scalar\NullNode;
-use Core\View\Template\Compiler\Nodes\StatementNode;
 use Core\View\Template\Compiler\{PrintContext, Tag, Token};
 use Core\View\Template\Compiler\Nodes\Php\Expression\{AssignNode, VariableNode};
 use Generator;

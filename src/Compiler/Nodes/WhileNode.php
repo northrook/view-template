@@ -11,7 +11,6 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
 use Core\View\Template\Compiler\{PrintContext, Tag};
-use Core\View\Template\Compiler\Nodes\{AreaNode, StatementNode};
 use Generator;
 
 /**

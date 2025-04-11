@@ -11,7 +11,6 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Compiler\{Block, Escaper, PrintContext, Tag, TemplateGenerator, TemplateParser, Token};
-use Core\View\Template\Compiler\Nodes\{AreaNode, StatementNode};
 use Core\View\Template\Compiler\Nodes\Php\{ModifierNode, Scalar};
 use Core\View\Template\Compiler\Nodes\Php\Expression\{AssignNode, VariableNode};
 use Core\View\Template\Runtime\Template;
