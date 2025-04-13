@@ -316,8 +316,8 @@ abstract class Component implements Stringable
     }
 
     /**
-     * @param array<string, scalar>               $properties
-     * @param array<string, scalar>               $attributes
+     * @param array<string, null|scalar>          $properties
+     * @param array<string, null|scalar>          $attributes
      * @param array<array-key, scalar|Stringable> $actions
      * @param array<array-key, scalar|Stringable> $content
      *
