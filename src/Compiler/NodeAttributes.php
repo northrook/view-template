@@ -45,10 +45,11 @@ final class NodeAttributes
             }
 
             // Set current index/name and attribute values
-            $name                   = NodeHelpers::toText( $attribute->name );
-            $value                  = NodeHelpers::toText( $attribute->value );
+            $name  = NodeHelpers::toText( $attribute->name );
+            $value = NodeHelpers::toText( $attribute->value );
+
             $this->variables[$name] = $value;
-            $this->attributes->add( (string) $name, $value );
+            $this->attributes->set( $name, $value );
         }
     }
 
@@ -74,11 +75,10 @@ final class NodeAttributes
         ) as $name => $node ) {
             $fragmentNode->append( TextNode::from( WHITESPACE ) );
 
-            $name       = \is_int( $name ) ? false : TextNode::from( $name );
-            $expression = \is_int( $name );
+            $name = \is_int( $name ) ? false : TextNode::from( $name );
 
             if ( $node instanceof PrintNode && $name ) {
-                $fragmentNode->append( new AttributeNode( $name, NodeHelpers::toValue( $node->expression ), '"') );
+                $fragmentNode->append( new AttributeNode( $name, NodeHelpers::toValue( $node->expression ), '"' ) );
 
                 continue;
             }
@@ -97,8 +97,6 @@ final class NodeAttributes
 
             $fragmentNode->append( new AttributeNode( $name, TextNode::from( $node ), '"' ) );
         }
-
-        // dd( $fragmentNode->children );
 
         return empty( $fragmentNode->children ) ? null : $fragmentNode;
     }
