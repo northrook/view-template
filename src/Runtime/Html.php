@@ -10,13 +10,14 @@ declare(strict_types=1);
 namespace Core\View\Template\Runtime;
 
 use ArrayAccess;
+use Core\Interface\View;
 use Stringable;
 use RuntimeException;
 
 /**
  * HTML literal.
  */
-class Html implements Stringable
+class Html extends View
 {
     /** @var array */
     private array $fragments = [];

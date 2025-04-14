@@ -214,7 +214,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             $this->enableExtension( $suppressExtension );
         }
 
-        dump( $this->extensions );
         return $string;
     }
 
