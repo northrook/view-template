@@ -219,7 +219,8 @@ abstract class Component implements Stringable
                 $this->getTemplatePath(),
                 $this->getParameters(),
                 // TOOD: DEBUG
-                preserveCacheKey : true,
+                preserveCacheKey  : true,
+                suppressExtension : ViewComponentExtension::class,
             ),
         );
     }

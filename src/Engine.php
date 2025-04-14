@@ -5,7 +5,7 @@
  * Copyright (c) 2008 David Grudl (https://davidgrudl.com)
  */
 
-declare( strict_types = 1 );
+declare(strict_types=1);
 
 namespace Core\View\Template;
 
@@ -34,14 +34,14 @@ use stdClass;
 use Stringable;
 use ReflectionAttribute;
 use BadMethodCallException;
-use function Support\{class_id, file_purge, is_empty, is_path, is_stringable, key_hash, normalize_path, slug};
+use function Support\{class_id, file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 use const Support\AUTO;
 
 class Engine implements LazyService, Profilable, LoggerAwareInterface
 {
     private ContentType $contentType = ContentType::HTML;
 
-    private null | Autoloader | Loader $loader = null;
+    private null|Autoloader|Loader $loader = null;
 
     private FunctionExecutor $functions;
 
@@ -49,6 +49,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     /** @var Extension[] */
     private array $extensions = [];
+
+    private array $parked = [];
 
     private stdClass $providers;
 
@@ -69,26 +71,25 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     // <editor-fold desc="Instantiation">
 
     /**
-     * @param null|string              $cacheDirectory
-     * @param array<array-key,string>  $templateDirectories
-     * @param array<string,string>     $preloadedTemplates
-     * @param null|string              $locale
-     * @param bool                     $preformatter
-     * @param bool                     $cache
-     * @param ?ClerkProfiler           $profiler
-     * @param ?LoggerInterface         $logger
+     * @param null|string             $cacheDirectory
+     * @param array<array-key,string> $templateDirectories
+     * @param array<string,string>    $preloadedTemplates
+     * @param null|string             $locale
+     * @param bool                    $preformatter
+     * @param bool                    $cache
+     * @param ?ClerkProfiler          $profiler
+     * @param ?LoggerInterface        $logger
      */
     public function __construct(
-            private ?string            $cacheDirectory = null,
-            protected array            $templateDirectories = [],
-            protected array            $preloadedTemplates = [],
-            private ?string            $locale = null,
-            private readonly bool      $preformatter = false,
-            protected bool             $cache = true,
-            protected ?ClerkProfiler   $profiler = null,
-            protected ?LoggerInterface $logger = null,
-    )
-    {
+        private ?string            $cacheDirectory = null,
+        protected array            $templateDirectories = [],
+        protected array            $preloadedTemplates = [],
+        private ?string            $locale = null,
+        private readonly bool      $preformatter = false,
+        protected bool             $cache = true,
+        protected ?ClerkProfiler   $profiler = null,
+        protected ?LoggerInterface $logger = null,
+    ) {
         $this->setCacheDirectory( $cacheDirectory );
         $this->filters   = new FilterExecutor();
         $this->functions = new FunctionExecutor();
@@ -100,14 +101,14 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * @param ?LoggerInterface  $logger
+     * @param ?LoggerInterface $logger
      */
     final public function setLogger( ?LoggerInterface $logger ) : void
     {
         $this->logger = $logger;
     }
 
-    final public function setProfiler( null | Stopwatch | ClerkProfiler $stopwatch, ?string $category = 'View' ) : void
+    final public function setProfiler( null|Stopwatch|ClerkProfiler $stopwatch, ?string $category = 'View' ) : void
     {
         $this->profiler = ClerkProfiler::from( $stopwatch, $category ?? $this::class );
     }
@@ -118,20 +119,19 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Renders template to output.
      *
-     * @param string        $name
-     * @param array|object  $parameters
-     * @param ?string       $block
-     * @param bool          $cache  [true]
+     * @param string       $name
+     * @param array|object $parameters
+     * @param ?string      $block
+     * @param bool         $cache      [true]
      *
      * @throws Throwable
      */
     public function print(
-            string         $name,
-            object | array $parameters = [],
-            ?string        $block = null,
-            ?bool          $cache = AUTO,
-    ) : void
-    {
+        string       $name,
+        object|array $parameters = [],
+        ?string      $block = null,
+        ?bool        $cache = AUTO,
+    ) : void {
         $template = $this->createTemplate( $name, $this->templateParameters( $parameters ), $cache );
 
         $template->global->coreCaptured = false;
@@ -141,18 +141,17 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Renders template to output.
      *
-     * @param string        $template
-     * @param array|object  $parameters
-     * @param bool          $cache  [true]
+     * @param string       $template
+     * @param array|object $parameters
+     * @param bool         $cache      [true]
      *
      * @return string
      */
     public function render(
-            string         $template,
-            object | array $parameters = [],
-            ?bool          $cache = AUTO,
-    ) : string
-    {
+        string       $template,
+        object|array $parameters = [],
+        ?bool        $cache = AUTO,
+    ) : string {
         $profiler = $this->profiler?->event( 'render' );
         $template = $this->createTemplate( $template, $parameters, $cache );
 
@@ -163,25 +162,46 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         return $string;
     }
 
+    public function enableExtension( string $extension ) : void
+    {
+        if ( \array_key_exists( $extension, $this->parked ) ) {
+            $this->extensions[$extension] = $this->parked[$extension];
+            unset( $this->parked[$extension] );
+        }
+    }
+
+    public function disableExtension( string $extension ) : void
+    {
+        if ( \array_key_exists( $extension, $this->extensions ) ) {
+            $this->parked[$extension] = $this->extensions[$extension];
+            unset( $this->extensions[$extension] );
+        }
+    }
+
     /**
      * Renders template to string.
      *
-     * @param string        $name
-     * @param array|object  $parameters
-     * @param ?string       $block
-     * @param bool          $cache
-     * @param bool          $preserveCacheKey
+     * @param string       $name
+     * @param array|object $parameters
+     * @param ?string      $block
+     * @param bool         $cache
+     * @param bool         $preserveCacheKey
+     * @param ?string      $suppressExtension
      *
      * @return string
      */
     public function renderToString(
-            string         $name,
-            object | array $parameters = [],
-            ?string        $block = null,
-            ?bool          $cache = AUTO,
-            bool           $preserveCacheKey = false,
-    ) : string
-    {
+        string       $name,
+        object|array $parameters = [],
+        ?string      $block = null,
+        ?bool        $cache = AUTO,
+        bool         $preserveCacheKey = false,
+        ?string      $suppressExtension = null,
+    ) : string {
+        if ( $suppressExtension ) {
+            $this->disableExtension( $suppressExtension );
+        }
+
         $profiler = $this->profiler?->event( 'render' );
         $template = $this->createTemplate( $name, $parameters, $cache, $preserveCacheKey );
 
@@ -189,6 +209,12 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
         $string = $template->capture( fn() => $template->render( $block ) );
         $profiler?->stop();
+
+        if ( $suppressExtension ) {
+            $this->enableExtension( $suppressExtension );
+        }
+
+        dump( $this->extensions );
         return $string;
     }
 
@@ -197,37 +223,36 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @internal
      *
-     * @param string        $name
-     * @param array|object  $parameters
-     * @param bool          $cache
-     * @param bool          $preserveCacheKey
+     * @param string       $name
+     * @param array|object $parameters
+     * @param bool         $cache
+     * @param bool         $preserveCacheKey
      *
      * @return Template
      */
     final public function createTemplate(
-            string         $name,
-            object | array $parameters = [],
-            ?bool          $cache = AUTO,
-            bool           $preserveCacheKey = false,
-    ) : Template
-    {
-        if ( !$preserveCacheKey ) {
+        string       $name,
+        object|array $parameters = [],
+        ?bool        $cache = AUTO,
+        bool         $preserveCacheKey = false,
+    ) : Template {
+        if ( ! $preserveCacheKey ) {
             $this->cacheKey = null;
         }
 
         $name  = is_path( $name ) ? normalize_path( $name ) : $name;
         $class = $this->getTemplateClass( $name );
-        if ( !\class_exists( $class, false ) ) {
+        if ( ! \class_exists( $class, false ) ) {
             $this->loadTemplate( $name, $cache );
         }
 
         $this->providers->fn = $this->functions;
         return new $class(
-                $this,
-                $this->templateParameters( $parameters ),
-                $this->filters,
-                $this->providers,
-                $name,
+            $this,
+            $this->templateParameters( $parameters ),
+            $this->filters,
+            $this->providers,
+            $name,
         );
     }
 
@@ -238,13 +263,13 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Sets locale for date and number formatting. See PHP intl extension.
      *
-     * @param ?string  $locale
+     * @param ?string $locale
      *
      * @return Engine
      */
     public function setLocale( ?string $locale ) : static
     {
-        if ( $locale && !\extension_loaded( 'intl' ) ) {
+        if ( $locale && ! \extension_loaded( 'intl' ) ) {
             throw new RuntimeException( "Locate requires the 'intl' extension to be installed." );
         }
         $this->locale = $locale;
@@ -264,7 +289,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     public function getPolicy( bool $effective = false ) : ?Policy
     {
-        return !$effective || $this->sandboxed
+        return ! $effective || $this->sandboxed
                 ? $this->policy
                 : null;
     }
@@ -278,7 +303,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Sets auto-refresh mode.
      *
-     * @param bool  $state
+     * @param bool $state
      *
      * @return Engine
      */
@@ -291,7 +316,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Enables declare(strict_types=1) in templates.
      *
-     * @param bool  $state
+     * @param bool $state
      *
      * @return Engine
      */
@@ -339,13 +364,13 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
      *
      * @internal
      *
-     * @param string  $name
+     * @param string $name
      *
      * @return string
      */
     final public function compile( string $name ) : string
     {
-        if ( $this->sandboxed && !$this->policy ) {
+        if ( $this->sandboxed && ! $this->policy ) {
             throw new LogicException( 'In sandboxed mode you need to set a security policy.' );
         }
 
@@ -357,11 +382,11 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             $compiled = $this->generate( $node, $name );
         }
         catch ( Throwable $exception ) {
-            if ( !$exception instanceof TemplateException ) {
+            if ( ! $exception instanceof TemplateException ) {
                 $exception = new TemplateException(
-                                   "Thrown exception '{$exception->getMessage()}'",
-                                   __METHOD__,
-                        previous : $exception,
+                    "Thrown exception '{$exception->getMessage()}'",
+                    __METHOD__,
+                    previous : $exception,
                 );
             }
 
@@ -379,7 +404,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Parses template to AST node.
      *
-     * @param string  $template
+     * @param string $template
      *
      * @return TemplateNode
      * @throws CompileException
@@ -395,15 +420,15 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         }
 
         return $parser
-                ->setContentType( $this->contentType )
-                ->setPolicy( $this->getPolicy( effective : true ) )
-                ->parse( $template );
+            ->setContentType( $this->contentType )
+            ->setPolicy( $this->getPolicy( effective : true ) )
+            ->parse( $template );
     }
 
     /**
      * Calls node visitors.
      *
-     * @param TemplateNode  $node
+     * @param TemplateNode $node
      */
     final public function applyPasses( TemplateNode &$node ) : void
     {
@@ -424,27 +449,27 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Generates compiled PHP code.
      *
-     * @param TemplateNode  $node
-     * @param string        $name
+     * @param TemplateNode $node
+     * @param string       $name
      *
      * @return string
      */
     final public function generate( TemplateNode $node, string $name ) : string
     {
         return ( new TemplateGenerator( $this->profiler ?? null ) )->generate(
-                $node,
-                $this->getTemplateClass( $name ),
-                $name,
-                $this->strictTypes,
+            $node,
+            $this->getTemplateClass( $name ),
+            $name,
+            $this->strictTypes,
         );
     }
 
     /**
-     * @param array|object  $parameters
+     * @param array|object $parameters
      *
      * @return array
      */
-    private function templateParameters( object | array $parameters ) : array
+    private function templateParameters( object|array $parameters ) : array
     {
         if ( \is_array( $parameters ) ) {
             return $parameters;
@@ -454,45 +479,45 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
         foreach ( $methods as $method ) {
             if ( $method->getAttributes( TemplateFilter::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
-                $this->addFilter( $method->name, [ $parameters, $method->name ] );
+                $this->addFilter( $method->name, [$parameters, $method->name] );
             }
             if ( $method->getAttributes( TemplateFunction::class, ReflectionAttribute::IS_INSTANCEOF ) ) {
-                $this->addFunction( $method->name, [ $parameters, $method->name ] );
+                $this->addFunction( $method->name, [$parameters, $method->name] );
             }
 
             $docblock = $method->getDocComment();
 
             if ( $docblock && \str_contains( $docblock, '@filter' ) ) {
                 throw new TemplateException(
-                        'Annotation @filter is deprecated, use attribute #[' . TemplateFilter::class . '] instead.',
-                        __METHOD__,
-                        E_USER_DEPRECATED,
+                    'Annotation @filter is deprecated, use attribute #['.TemplateFilter::class.'] instead.',
+                    __METHOD__,
+                    E_USER_DEPRECATED,
                 );
             }
 
             if ( $docblock && \str_contains( $docblock, '@function' ) ) {
                 throw new TemplateException(
-                        'Annotation @function is deprecated, use attribute #[' . TemplateFunction::class . '] instead.',
-                        __METHOD__,
-                        E_USER_DEPRECATED,
+                    'Annotation @function is deprecated, use attribute #['.TemplateFunction::class.'] instead.',
+                    __METHOD__,
+                    E_USER_DEPRECATED,
                 );
             }
         }
 
-        return \array_filter( (array) $parameters, fn( $key ) => $key[ 0 ] !== "\0", ARRAY_FILTER_USE_KEY );
+        return \array_filter( (array) $parameters, fn( $key ) => $key[0] !== "\0", ARRAY_FILTER_USE_KEY );
     }
 
     /**
      * Registers run-time filter.
      *
-     * @param string    $name
-     * @param callable  $callback
+     * @param string   $name
+     * @param callable $callback
      *
      * @return Engine
      */
     public function addFilter( string $name, callable $callback ) : static
     {
-        if ( !\preg_match( '#^[a-z]\w*$#iD', $name ) ) {
+        if ( ! \preg_match( '#^[a-z]\w*$#iD', $name ) ) {
             throw new LogicException( "Invalid filter name '{$name}'." );
         }
 
@@ -503,7 +528,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Registers filter loader.
      *
-     * @param callable  $loader
+     * @param callable $loader
      *
      * @return Engine
      */
@@ -526,8 +551,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Call a run-time filter.
      *
-     * @param string  $name
-     * @param array   $args
+     * @param string $name
+     * @param array  $args
      *
      * @return mixed
      */
@@ -539,19 +564,20 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Adds new extension.
      *
-     * @param Extension  $extension
+     * @param Extension $extension
      *
      * @return Engine
      */
     public function addExtension( Extension $extension ) : self
     {
-        $id = class_id( $extension );
+        // $id = class_id( $extension );
+        $id = $extension::class;
 
         if ( \array_key_exists( $id, $this->extensions ) ) {
             return $this;
         }
 
-        $this->extensions[ $id ] = $extension;
+        $this->extensions[$id] = $extension;
 
         foreach ( $extension->getFilters() as $name => $value ) {
             $this->filters->add( $name, $value );
@@ -578,14 +604,14 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Registers run-time function.
      *
-     * @param string    $name
-     * @param callable  $callback
+     * @param string   $name
+     * @param callable $callback
      *
      * @return Engine
      */
     public function addFunction( string $name, callable $callback ) : static
     {
-        if ( !\preg_match( '#^[a-z]\w*$#iD', $name ) ) {
+        if ( ! \preg_match( '#^[a-z]\w*$#iD', $name ) ) {
             throw new LogicException( "Invalid function name '{$name}'." );
         }
 
@@ -596,8 +622,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Call a run-time function.
      *
-     * @param string  $name
-     * @param array   $args
+     * @param string $name
+     * @param array  $args
      *
      * @return mixed
      */
@@ -617,14 +643,14 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Adds new provider.
      *
-     * @param string  $name
-     * @param mixed   $provider
+     * @param string $name
+     * @param mixed  $provider
      *
      * @return Engine
      */
     public function addProvider( string $name, mixed $provider ) : static
     {
-        if ( !\preg_match( '#^[a-z]\w*$#iD', $name ) ) {
+        if ( ! \preg_match( '#^[a-z]\w*$#iD', $name ) ) {
             throw new LogicException( "Invalid provider name '{$name}'." );
         }
 
@@ -646,11 +672,11 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     // <editor-fold desc="Loader">
 
     /**
-     * @param null|Autoloader|Loader  $loader
+     * @param null|Autoloader|Loader $loader
      *
      * @return $this
      */
-    public function setLoader( null | Autoloader | Loader $loader ) : static
+    public function setLoader( null|Autoloader|Loader $loader ) : static
     {
         $this->loader = $loader;
         return $this;
@@ -659,18 +685,18 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * @return Autoloader|Loader
      */
-    final public function getLoader() : Autoloader | Loader
+    final public function getLoader() : Autoloader|Loader
     {
         return $this->loader ??= new Autoloader(
-                $this->templateDirectories,
-                $this->preloadedTemplates,
+            $this->templateDirectories,
+            $this->preloadedTemplates,
         );
     }
 
-    final public function addTemplateDirectory( string $directory, null | int | string $key = null ) : self
+    final public function addTemplateDirectory( string $directory, null|int|string $key = null ) : self
     {
         if ( $key ) {
-            $this->templateDirectories[ $key ] ??= $directory;
+            $this->templateDirectories[$key] ??= $directory;
         }
         else {
             $this->templateDirectories[] = $directory;
@@ -679,21 +705,20 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * @param string  $name
-     * @param bool    $instantiate
-     * @param ?bool   $cache
+     * @param string $name
+     * @param bool   $instantiate
+     * @param ?bool  $cache
      *
      * @return class-string<Template>
      */
     final public function getTemplateClass(
-            string $name,
-            bool   $instantiate = false,
-            ?bool  $cache = AUTO,
-    ) : string
-    {
-        $class = 'Template_' . $this->getCacheKey( $name );
+        string $name,
+        bool   $instantiate = false,
+        ?bool  $cache = AUTO,
+    ) : string {
+        $class = 'Template_'.$this->getCacheKey( $name );
 
-        if ( $instantiate && !\class_exists( $class, false ) ) {
+        if ( $instantiate && ! \class_exists( $class, false ) ) {
             $this->loadTemplate( $name, $cache );
         }
 
@@ -701,18 +726,18 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * @param string  $name
-     * @param bool    $cache
+     * @param string $name
+     * @param bool   $cache
      */
     private function loadTemplate( string $name, ?bool $cache ) : void
     {
-        if ( !$this->cacheDirectory || !( $cache ?? $this->cache ) ) {
+        if ( ! $this->cacheDirectory || ! ( $cache ?? $this->cache ) ) {
             $compiled = $this->compile( $name );
             // @escalate to exception, remove <?php
             if ( @eval( \substr( $compiled, 5 ) ) === false ) {
                 throw ( new TemplateException(
-                        'Error in template: ' . \error_get_last()[ 'message' ],
-                        __METHOD__,
+                    'Error in template: '.\error_get_last()['message'],
+                    __METHOD__,
                 ) )->setSource( $compiled, "{$name} (compiled)" );
             }
             return;
@@ -730,8 +755,8 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
                 : null;
 
         if (
-                !( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) )
-                && ( @include $cacheFile ) !== false // @ - file may not exist
+            ! ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) )
+            && ( @include $cacheFile ) !== false // @ - file may not exist
         ) {
             return;
         }
@@ -744,11 +769,11 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         $lock = $this->acquireLock( "{$cacheFile}.lock", LOCK_EX );
 
         // while waiting for exclusive lock, someone might have already created the cache
-        if ( !\is_file( $cacheFile ) || ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) ) ) {
+        if ( ! \is_file( $cacheFile ) || ( $this->autoRefresh && $cacheKey !== \stream_get_contents( $lock ) ) ) {
             $compiled = $this->compile( $name );
             if (
-                    \file_put_contents( "{$cacheFile}.tmp", $compiled ) !== \strlen( $compiled )
-                    || !\rename( "{$cacheFile}.tmp", $cacheFile )
+                \file_put_contents( "{$cacheFile}.tmp", $compiled ) !== \strlen( $compiled )
+                || ! \rename( "{$cacheFile}.tmp", $cacheFile )
             ) {
                 @\unlink( "{$cacheFile}.tmp" ); // @ - file may not exist
                 throw new RuntimeException( "Unable to create '{$cacheFile}'." );
@@ -771,26 +796,26 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * @param string  $file
-     * @param int     $mode
+     * @param string $file
+     * @param int    $mode
      *
      * @return resource
      */
     private function acquireLock( string $file, int $mode )
     {
         $dir = \dirname( $file );
-        if ( !\is_dir( $dir ) && !@\mkdir( $dir ) && !\is_dir( $dir ) ) { // @ - dir may already exist
-            throw new RuntimeException( "Unable to create directory '{$dir}'. " . \error_get_last()[ 'message' ] );
+        if ( ! \is_dir( $dir ) && ! @\mkdir( $dir ) && ! \is_dir( $dir ) ) { // @ - dir may already exist
+            throw new RuntimeException( "Unable to create directory '{$dir}'. ".\error_get_last()['message'] );
         }
 
         $handle = @\fopen( $file, 'c+' ); // @ is escalated to exception
-        if ( !$handle ) {
-            throw new RuntimeException( "Unable to create file '{$file}'. " . \error_get_last()[ 'message' ] );
+        if ( ! $handle ) {
+            throw new RuntimeException( "Unable to create file '{$file}'. ".\error_get_last()['message'] );
         }
-        if ( !@\flock( $handle, $mode ) ) { // @ is escalated to exception
+        if ( ! @\flock( $handle, $mode ) ) { // @ is escalated to exception
             throw new RuntimeException(
-                    'Unable to acquire ' . ( $mode & LOCK_EX ? 'exclusive'
-                            : 'shared' ) . " lock on file '{$file}'. " . \error_get_last()[ 'message' ],
+                'Unable to acquire '.( $mode & LOCK_EX ? 'exclusive'
+                            : 'shared' )." lock on file '{$file}'. ".\error_get_last()['message'],
             );
         }
 
@@ -805,7 +830,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     /**
      * Sets path to temporary directory.
      *
-     * @param ?string  $path
+     * @param ?string $path
      *
      * @return Engine
      */
@@ -821,24 +846,24 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         if ( is_path( $name ) ) {
             $path .= DIR_SEP;
             $path .= slug(
-                    \implode( '.', \array_slice( \explode( DIR_SEP, $name ), -2 ) ),
+                \implode( '.', \array_slice( \explode( DIR_SEP, $name ), -2 ) ),
             );
             $path .= '--';
         }
-        return $path . $this->getCacheKey( $name ) . '.php';
+        return $path.$this->getCacheKey( $name ).'.php';
     }
 
     /**
      * Compiles template to cache.
      *
-     * @param string  $name
+     * @param string $name
      *
      * @return bool
      */
     final public function warmupCache( string $name ) : bool
     {
-        if ( !$this->cacheDirectory ) {
-            throw new LogicException( $this::class . ' has no cache directory set.' );
+        if ( ! $this->cacheDirectory ) {
+            throw new LogicException( $this::class.' has no cache directory set.' );
         }
 
         try {
@@ -865,13 +890,13 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     final public function pruneTemplateCache() : array
     {
-        throw new BadMethodCallException( __METHOD__ . ' not implemented yet.' );
+        throw new BadMethodCallException( __METHOD__.' not implemented yet.' );
     }
 
     /**
      * Returns an 8 character hash based on Template content and used Extensions.
      *
-     * @param string  $name
+     * @param string $name
      *
      * @return string
      */
@@ -882,33 +907,33 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         foreach ( $this->extensions as $extension ) {
             \assert( \class_exists( $extension::class ) );
             $signature ^= \filemtime(
-                    ( new ReflectionClass( $extension::class ) )->getFileName(),
+                ( new ReflectionClass( $extension::class ) )->getFileName(),
             );
         }
 
-        return \hash( 'xxh32', $signature . $this->getLoader()->getContent( $name ) );
+        return \hash( 'xxh32', $signature.$this->getLoader()->getContent( $name ) );
     }
 
     /**
      * Generates a 16 character alphanumeric cache key.
      *
-     * @param string  $name
+     * @param string $name
      *
      * @return string
      */
     final protected function getCacheKey( string $name ) : string
     {
-        if ( !isset( $this->cacheKey ) ) {
+        if ( ! isset( $this->cacheKey ) ) {
             $fimemtime = 0;
             $signature = [
-                    $this->contentType,
-                    ...\array_keys( $this->getFunctions() ),
+                $this->contentType,
+                ...\array_keys( $this->getFunctions() ),
             ];
 
             foreach ( $this->extensions as $extension ) {
                 \assert( \class_exists( $extension::class ) );
                 $fimemtime ^= \filemtime(
-                        ( new ReflectionClass( $extension::class ) )->getFileName(),
+                    ( new ReflectionClass( $extension::class ) )->getFileName(),
                 );
 
                 $signature[] = $extension::class;
@@ -931,7 +956,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             $this->cacheKey = key_hash( 'xxh32', ...$signature );
         }
 
-        return $this->cacheKey . key_hash( 'xxh32', $this->getLoader()->getUniqueId( $name ) );
+        return $this->cacheKey.key_hash( 'xxh32', $this->getLoader()->getUniqueId( $name ) );
     }
     // </editor-fold>)
 }

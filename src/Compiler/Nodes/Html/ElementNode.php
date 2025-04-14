@@ -42,11 +42,11 @@ class ElementNode extends AreaNode
     private ?string $endTagVar;
 
     public function __construct(
-        public /* readonly */ string    $name,
-        public ?Position $position = null,
-        public /* readonly */ ?self     $parent = null,
-        public ?stdClass $data = null,
-        public ContentType    $contentType = ContentType::HTML,
+        public /* readonly */ string      $name,
+        public ?Position   $position = null,
+        public /* readonly */ ?self       $parent = null,
+        public ?stdClass   $data = null,
+        public ContentType $contentType = ContentType::HTML,
     ) {
         $this->data ??= new stdClass();
         $this->tagNode = new AuxiliaryNode( $this->printStartTag( ... ) );
@@ -64,6 +64,11 @@ class ElementNode extends AreaNode
         }
 
         return null;
+    }
+
+    public function isVoid() : bool
+    {
+        return $this->content instanceof Nodes\NopNode;
     }
 
     public function is( string $name ) : bool
