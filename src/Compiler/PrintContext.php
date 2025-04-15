@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler;
 
-use Core\View\Template\Support\PhpGenerator;
 use Core\View\Template\Compiler\Nodes\Php\{Expression, Scalar};
 use Core\View\Template\ContentType;
+use Support\PhpGenerator;
 
 /**
  * PHP printing helpers and context.

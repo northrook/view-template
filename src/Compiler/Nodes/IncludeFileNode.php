@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
-use Core\View\Template\Support\PhpGenerator;
+use Support\PhpGenerator;
 use Generator;
 use Core\View\Template\Compiler\{PrintContext, Tag, TemplateGenerator};
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ModifierNode};

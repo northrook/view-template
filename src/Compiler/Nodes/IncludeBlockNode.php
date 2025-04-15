@@ -12,10 +12,10 @@ namespace Core\View\Template\Compiler\Nodes;
 use Core\View\Template\Compiler\{Block, PrintContext, Tag, TemplateGenerator, TemplateParser};
 use Core\View\Template\Exception\CompileException;
 use Core\View\Template\Runtime\Template;
-use Core\View\Template\Support\PhpGenerator;
 use Core\View\Template\Compiler\Nodes\Php\{ExpressionNode, ModifierNode, Scalar};
 use Core\View\Template\Compiler\Nodes\Php\Expression\ArrayNode;
 use Generator;
+use Support\PhpGenerator;
 
 /**
  * {include [block] name [from file] [, args]}
