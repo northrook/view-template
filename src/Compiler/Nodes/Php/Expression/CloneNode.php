@@ -20,7 +20,7 @@ class CloneNode extends ExpressionNode
         public ?Position      $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return 'clone '.$this->expr->print( $context );
     }

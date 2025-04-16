@@ -14,7 +14,7 @@ use Generator;
 
 class NopNode extends AreaNode
 {
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '';
     }

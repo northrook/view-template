@@ -20,7 +20,7 @@ class CommentNode extends AreaNode
         public ?Position $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $context->beginEscape()->enterHtmlComment();
         $content = $this->content->print( $context );

@@ -30,7 +30,7 @@ class VarTypeNode extends StatementNode
         return new static();
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '';
     }

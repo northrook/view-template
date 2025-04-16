@@ -24,7 +24,7 @@ class IdentifierNode extends Node
         return $this->name;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->name;
     }

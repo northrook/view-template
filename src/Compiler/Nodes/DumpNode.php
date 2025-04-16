@@ -44,7 +44,7 @@ final class DumpNode extends StatementNode
         return new self( $tag );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( ! \function_exists( 'dump' ) ) {
             return '/* '.\implode(

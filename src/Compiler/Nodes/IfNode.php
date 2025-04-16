@@ -104,7 +104,7 @@ class IfNode extends StatementNode
         return Expression\BinaryOpNode::nest( '&&', ...$list );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->capture
                 ? $this->printCapturing( $context )

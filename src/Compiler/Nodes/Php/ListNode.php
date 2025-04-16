@@ -33,7 +33,7 @@ class ListNode extends Node
      * @return string
      * @throws CompileException
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $this->validate();
         return '['.$context->implode( $this->items ).']';

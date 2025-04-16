@@ -35,7 +35,7 @@ final class NAttrNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $tmp = TemplateGenerator::ARG_TEMP;
         $loc = TemplateGenerator::ARG_LOC;

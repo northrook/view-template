@@ -54,7 +54,7 @@ final class NTagNode extends StatementNode
      *
      * @return string
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print' );
     }

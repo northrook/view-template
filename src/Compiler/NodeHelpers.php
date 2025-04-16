@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler;
 
-use Core\View\Template\Compiler\Nodes\{FragmentNode, NopNode, TextNode};
+use Core\View\Template\Compiler\Nodes\{FragmentNode, Html\ElementNode, NopNode, TextNode};
 use InvalidArgumentException;
 
 use Core\View\Template\Compiler\Nodes\Php\{Expression\ArrayNode,
@@ -140,9 +140,10 @@ final class NodeHelpers
         }
 
         return match ( true ) {
-            $node instanceof TextNode => $node->content,
-            $node instanceof NopNode  => '',
-            default                   => null,
+            $node instanceof TextNode    => $node->content,
+            $node instanceof NopNode     => '',
+            $node instanceof ElementNode => $node->print(),
+            default                      => null,
         };
     }
 }

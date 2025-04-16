@@ -27,7 +27,7 @@ class ArgumentNode extends Node
         public ?Position       $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return ( $this->name ? $this->name.': ' : '' )
                .( $this->byRef ? '&' : '' )

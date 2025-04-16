@@ -42,7 +42,7 @@ class PostOpNode extends ExpressionNode
      *
      * @throws CompileException
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $this->validate();
         return $context->postfixOp( $this, $this->var, $this->operator );

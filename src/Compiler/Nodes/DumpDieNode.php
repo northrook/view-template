@@ -45,7 +45,7 @@ final class DumpDieNode extends StatementNode
         return new self( $tag );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( ! \function_exists( 'dd' ) ) {
             return '/* '.\implode(

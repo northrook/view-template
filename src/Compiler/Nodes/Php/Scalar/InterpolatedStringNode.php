@@ -47,7 +47,7 @@ class InterpolatedStringNode extends ScalarNode
         return new static( $parts, $position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $s    = '';
         $expr = false;

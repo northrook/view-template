@@ -54,7 +54,7 @@ class ForNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->format(
             <<<'XX'

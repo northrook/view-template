@@ -51,7 +51,7 @@ class IntegerNode extends ScalarNode
      * @return string
      * @throws Exception
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( $this->value === -PHP_INT_MAX - 1 ) {
             // PHP_INT_MIN cannot be represented as a literal, because the sign is not part of the literal

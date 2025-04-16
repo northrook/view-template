@@ -21,7 +21,7 @@ class ListItemNode extends Node
         public ?Position                          $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $key = match ( true ) {
             $this->key instanceof ExpressionNode => $this->key->print( $context ).' => ',

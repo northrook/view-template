@@ -30,7 +30,7 @@ class StringNode extends ScalarNode
         return new static( $str, $position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->encodeString( $this->value );
     }

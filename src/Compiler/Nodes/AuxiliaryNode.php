@@ -27,7 +27,7 @@ class AuxiliaryNode extends AreaNode
         ( function( ?Node ...$nodes ) {} )( ...$nodes );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return ( $this->print )( $context, ...$this->nodes );
     }

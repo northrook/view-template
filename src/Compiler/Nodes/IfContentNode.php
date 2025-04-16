@@ -49,7 +49,7 @@ class IfContentNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $_if_c = TemplateGenerator::ARG_IF_C;
 

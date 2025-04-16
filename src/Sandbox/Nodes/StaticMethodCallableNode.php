@@ -19,7 +19,7 @@ class StaticMethodCallableNode extends Expression\StaticMethodCallableNode
         parent::__construct( $from->class, $from->name, $from->position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '$this->global->sandbox->closure(['
                .$context->memberAsString( $this->class ).', '

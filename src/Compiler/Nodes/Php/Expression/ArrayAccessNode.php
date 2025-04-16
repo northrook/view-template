@@ -21,7 +21,7 @@ class ArrayAccessNode extends ExpressionNode
         public ?Position       $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->dereferenceExpr( $this->expr )
                .'['.( $this->index !== null ? $this->index->print( $context ) : '' ).']';

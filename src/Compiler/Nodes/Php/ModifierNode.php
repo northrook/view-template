@@ -42,7 +42,7 @@ class ModifierNode extends Node
         return false;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print ModifierNode' );
     }

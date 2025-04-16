@@ -19,7 +19,7 @@ class FunctionCallNode extends Expression\FunctionCallNode
         parent::__construct( $from->name, $from->args, $from->position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '$this->global->sandbox->call('
                .$context->memberAsString( $this->name ).', '

@@ -25,7 +25,7 @@ class FunctionCallNode extends ExpressionNode
         ( function( ArgumentNode ...$args ) {} )( ...$args );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->callExpr( $this->name ).'('.$context->implode( $this->args ).')';
     }

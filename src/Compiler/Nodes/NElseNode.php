@@ -34,7 +34,7 @@ final class NElseNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print' );
     }

@@ -73,7 +73,7 @@ class VarNode extends StatementNode
         return $res;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $res = [];
         if ( $this->default ) {

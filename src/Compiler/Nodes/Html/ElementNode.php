@@ -15,6 +15,7 @@ use stdClass;
 
 use Core\View\Template\Compiler\{Node, NodeHelpers, Nodes, Position, PrintContext, Tag, TemplateGenerator};
 use Core\View\Template\Compiler\Nodes\{AreaNode, AuxiliaryNode, FragmentNode};
+use const Support\AUTO;
 
 /**
  * HTML element node.
@@ -84,60 +85,72 @@ class ElementNode extends AreaNode
                && ( $this->is( 'script' ) || $this->is( 'style' ) );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context = AUTO ) : string
     {
+        $context ??= new PrintContext();
         $_tag = TemplateGenerator::ARG_TAG;
 
-        $res = $this->endTagVar = null;
+        $output = $this->endTagVar = null;
+
         if ( $this->captureTagName || $this->variableName ) {
             $endTag = $this->endTagVar = $_tag.'['.$context->generateId().']';
-            $res    = "{$this->endTagVar} = '';";
+            $output = "{$this->endTagVar} = '';";
         }
         else {
-            $endTag = \var_export( '</'.$this->name.'>', true );
+            $endTag = $context->output( "</{$this->name}>" );
         }
 
-        $res .= $this->tagNode->print( $context ); // calls $this->printStartTag()
+        $output .= $this->tagNode->print( $context ); // calls $this->printStartTag()
 
         if ( $this->content ) {
             $context->beginEscape()->enterHtmlText( $this );
             $content = $this->content->print( $context );
             $context->restoreEscape();
-            $res .= $this->breakable
-                    ? 'try { '.$content.' } finally { echo '.$endTag.'; } '
-                    : $content.'echo '.$endTag.';';
+
+            $output .= $this->breakable
+                    ? 'try { '.$content.' } finally { '.$endTag.' } '
+                    : $content.( $context->raw ? $endTag : "echo {$endTag};" );
         }
 
-        return $res;
+        return $output;
     }
 
     private function printStartTag( PrintContext $context ) : string
     {
         $context->beginEscape()->enterHtmlTag( $this->name );
-        $res  = "echo '<';";
-        $_tmp = TemplateGenerator::ARG_TEMP;
+
+        $print = $context->output( '<' );
+        $_tmp  = TemplateGenerator::ARG_TEMP;
 
         if ( $this->endTagVar ) {
-            $expr = $this->variableName
+            $expression = $this->variableName
                     ? TemplateGenerator::NAMESPACE.'\Filters::safeTag('
                       .$this->variableName->print( $context )
                       .( $this->contentType === ContentType::XML ? ', true' : '' )
                       .')'
                     : \var_export( $this->name, true );
-            $res .= "echo {$_tmp} = {$expr} /* line {$this->position->line} */;"
-                     ."{$this->endTagVar} = '</' . {$_tmp} . '>' . {$this->endTagVar};";
+
+            $assign = "{$_tmp} = {$expression}";
+            $close  = "{$this->endTagVar} = '</' . {$_tmp} . '>' . {$this->endTagVar};";
+
+            if ( $context->raw ) {
+                $print .= "' . {$assign};".$close;
+            }
+            else {
+                $print .= "echo {$assign} /* line {$this->position->line} */;\n     ".$close;
+            }
         }
         else {
-            $res .= 'echo '.\var_export( $this->name, true ).';';
+            $print .= $context->output( $this->name );
         }
 
         foreach ( $this->attributes?->children ?? [] as $attr ) {
-            $res .= $attr->print( $context );
+            $print .= $attr->print( $context );
         }
 
-        $res .= "echo '".( $this->selfClosing ? '/>' : '>' )."';";
+        $print .= $context->output( $this->selfClosing ? '/>' : '>' );
         $context->restoreEscape();
-        return $res;
+        return $print;
     }
 
     public function &getIterator() : Generator

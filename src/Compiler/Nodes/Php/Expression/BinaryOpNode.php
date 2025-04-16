@@ -79,7 +79,7 @@ class BinaryOpNode extends ExpressionNode
         return $last;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->infixOp( $this, $this->left, ' '.$this->operator.' ', $this->right );
     }

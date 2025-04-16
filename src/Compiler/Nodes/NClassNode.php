@@ -39,7 +39,7 @@ final class NClassNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $tmp = TemplateGenerator::ARG_TEMP;
         $ns  = TemplateGenerator::NAMESPACE;

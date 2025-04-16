@@ -21,7 +21,7 @@ class TraceNode extends StatementNode
         return new static();
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->format(
             '\Core\View\Template\Support\Tracer::throw() %line;',

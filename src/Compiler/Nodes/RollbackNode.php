@@ -32,7 +32,7 @@ class RollbackNode extends StatementNode
         return new static();
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return 'throw new Core\View\Template\Essential\RollbackException;';
     }

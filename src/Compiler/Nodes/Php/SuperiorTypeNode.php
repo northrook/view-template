@@ -20,7 +20,7 @@ class SuperiorTypeNode extends ComplexTypeNode
         public ?Position $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print SuperiorTypeNode' );
     }

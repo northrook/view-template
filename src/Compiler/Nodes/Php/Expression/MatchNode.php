@@ -28,7 +28,7 @@ class MatchNode extends ExpressionNode
         ( function( MatchArmNode ...$args ) {} )( ...$arms );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $res = 'match ('.$this->cond->print( $context ).') {';
 

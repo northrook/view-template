@@ -19,7 +19,7 @@ class StaticMethodCallNode extends Expression\StaticMethodCallNode
         parent::__construct( $from->class, $from->name, $from->args, $from->position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '$this->global->sandbox->call(['
                .$context->memberAsString( $this->class ).', '

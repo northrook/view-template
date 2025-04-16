@@ -41,7 +41,7 @@ class SandboxNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $_exception = TemplateGenerator::ARG_EXCEPTION;
         return $context->format(

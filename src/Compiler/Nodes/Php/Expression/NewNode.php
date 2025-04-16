@@ -29,7 +29,7 @@ class NewNode extends ExpressionNode
         ( function( ArgumentNode ...$args ) {} )( ...$args );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return 'new '.$context->dereferenceExpr( $this->class )
                .( $this->args ? '('.$context->implode( $this->args ).')' : '' );

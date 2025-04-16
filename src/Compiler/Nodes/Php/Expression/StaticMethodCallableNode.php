@@ -21,7 +21,7 @@ class StaticMethodCallableNode extends ExpressionNode
         public ?Position                     $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $name = match ( true ) {
             $this->name instanceof VariableNode   => $this->name->print( $context ),

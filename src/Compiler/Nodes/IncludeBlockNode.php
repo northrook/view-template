@@ -90,7 +90,7 @@ class IncludeBlockNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $fl       = TemplateGenerator::ARG_FILTER;
         $ns       = TemplateGenerator::NAMESPACE;

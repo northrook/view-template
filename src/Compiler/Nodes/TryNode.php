@@ -40,7 +40,7 @@ class TryNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $_try             = TemplateGenerator::ARG_TRY;
         $_it              = TemplateGenerator::ARG_IT;

@@ -132,7 +132,7 @@ class NameNode extends Node
         return isset( $keywords[\strtolower( $this->name )] );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->toCodeString();
     }

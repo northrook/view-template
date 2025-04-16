@@ -22,7 +22,7 @@ final class TemplateNode extends Node
 
     public ContentType $contentType;
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print TemplateNode' );
     }

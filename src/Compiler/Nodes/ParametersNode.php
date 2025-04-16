@@ -76,7 +76,7 @@ class ParametersNode extends StatementNode
         return $params;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $context->paramsExtraction = $this->parameters;
         return '';

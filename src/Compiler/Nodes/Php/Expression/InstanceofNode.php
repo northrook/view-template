@@ -22,7 +22,7 @@ class InstanceofNode extends ExpressionNode
         public ?Position               $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->postfixOp( $this, $this->expr, ' instanceof ' )
                .$context->dereferenceExpr( $this->class );

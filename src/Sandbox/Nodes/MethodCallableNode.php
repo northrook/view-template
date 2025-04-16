@@ -19,7 +19,7 @@ class MethodCallableNode extends Expression\MethodCallableNode
         parent::__construct( $from->object, $from->name, $from->position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '$this->global->sandbox->closure(['
                .$this->object->print( $context ).', '

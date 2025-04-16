@@ -23,8 +23,9 @@ class AttributeNode extends AreaNode
         public ?Position $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
+        $context ??= new PrintContext();
         $output = $this->name->print( $context );
 
         if ( ! $this->value ) {
@@ -32,10 +33,13 @@ class AttributeNode extends AreaNode
         }
 
         $escaper = $context->beginEscape();
-        $quote   = $this->quote ?? ( $this->value instanceof TextNode ? null : '"' );
+        $output .= $context->output( '=' );
 
-        $output .= "echo '=';";
-        $output .= $quote ? 'echo '.\var_export( $quote, true ).';' : '';
+        $quote = $this->quote ?? ( $this->value instanceof TextNode ? null : '"' );
+
+        if ( $quote ) {
+            $output .= $context->output( $quote );
+        }
 
         $escaper->enterHtmlAttribute( NodeHelpers::toText( $this->name ) );
 
@@ -50,8 +54,8 @@ class AttributeNode extends AreaNode
         }
 
         $context->restoreEscape();
-        $output .= $quote ? 'echo '.\var_export( $quote, true ).';' : '';
-        return $output;
+
+        return $quote ? $output.$context->output( $quote ) : $output;
     }
 
     public function &getIterator() : Generator

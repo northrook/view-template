@@ -36,7 +36,7 @@ class IssetNode extends ExpressionNode
      *
      * @throws CompileException
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $this->validate();
         return 'isset('.$context->implode( $this->vars ).')';

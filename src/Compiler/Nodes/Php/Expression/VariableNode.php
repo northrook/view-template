@@ -20,7 +20,7 @@ class VariableNode extends ExpressionNode
         public ?Position             $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->name instanceof ExpressionNode
                 ? '${'.$this->name->print( $context ).'}'

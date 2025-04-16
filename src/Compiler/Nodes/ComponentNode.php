@@ -6,6 +6,7 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\{Position, PrintContext};
 use Generator;
+use const Support\AUTO;
 
 final class ComponentNode extends AreaNode
 {
@@ -61,7 +62,7 @@ final class ComponentNode extends AreaNode
         };
     }
 
-    public function print( ?PrintContext $context = null ) : string
+    public function print( ?PrintContext $context = AUTO ) : string
     {
         $context ??= new PrintContext();
         $output = '';

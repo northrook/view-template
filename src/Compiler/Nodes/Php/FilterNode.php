@@ -29,7 +29,7 @@ class FilterNode extends Node
         ( function( ArgumentNode ...$args ) {} )( ...$args );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         throw new LogicException( 'Cannot directly print FilterNode' );
     }

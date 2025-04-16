@@ -28,7 +28,7 @@ class ParameterNode extends Node
         }
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return ( $this->type ? $this->type->print( $context ).' ' : '' )
                .( $this->byRef ? '&' : '' )

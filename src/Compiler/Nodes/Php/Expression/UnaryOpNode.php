@@ -28,7 +28,7 @@ class UnaryOpNode extends ExpressionNode
         }
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->expr instanceof self || $this->expr instanceof PreOpNode
                 ? $this->operator.'('.$this->expr->print( $context ).')' // Enforce -(-$expr) instead of --$expr

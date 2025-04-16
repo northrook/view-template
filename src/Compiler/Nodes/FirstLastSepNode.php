@@ -52,7 +52,7 @@ class FirstLastSepNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $cond = match ( $this->name ) {
             'first' => '$iterator->isFirst',

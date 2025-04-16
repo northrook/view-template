@@ -19,7 +19,7 @@ class PropertyFetchNode extends Expression\PropertyFetchNode
         parent::__construct( $from->object, $from->name, $from->nullsafe, $from->position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '$this->global->sandbox->prop('
                .$this->object->print( $context ).', '

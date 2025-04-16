@@ -27,7 +27,7 @@ class FloatNode extends ScalarNode
                 : new static( (float) \str_replace( '_', '', $str ), $position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( ! \is_finite( $this->value ) ) {
             if ( $this->value === INF ) {

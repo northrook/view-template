@@ -32,7 +32,7 @@ class ArrayNode extends ExpressionNode
         return \array_map( fn( ArrayItemNode $item ) => $item->toArgument(), $this->items );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         // Converts [...$var] -> $var, because PHP 8.0 doesn't support unpacking with string keys
         if ( PHP_VERSION_ID < 80_100 ) {

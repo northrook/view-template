@@ -21,7 +21,7 @@ class FunctionCallableNode extends ExpressionNode
         public ?Position               $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return PHP_VERSION_ID < 80_100
                 ? $context->memberAsString( $this->name )

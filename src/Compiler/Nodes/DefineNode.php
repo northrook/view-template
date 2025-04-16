@@ -102,7 +102,7 @@ class DefineNode extends StatementNode
      * @return string
      * @throws CompileException
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->block->isDynamic()
                 ? $this->printDynamic( $context )

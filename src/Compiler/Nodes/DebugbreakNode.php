@@ -33,7 +33,7 @@ class DebugbreakNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( \function_exists( $func = 'debugbreak' ) || \function_exists( $func = 'xdebug_break' ) ) {
             return $context->format(

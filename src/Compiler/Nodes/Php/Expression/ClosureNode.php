@@ -42,7 +42,7 @@ class ClosureNode extends ExpressionNode
         ( function( ClosureUseNode ...$args ) {} )( ...$uses );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $arrow = (bool) $this->expr;
 

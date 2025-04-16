@@ -93,7 +93,7 @@ class ForeachNode extends StatementNode
         [$node->key, $node->value, $node->byRef] = $parser->parseForeach();
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $_it = TemplateGenerator::ARG_IT;
 

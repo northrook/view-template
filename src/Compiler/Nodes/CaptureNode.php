@@ -54,7 +54,7 @@ class CaptureNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $tmp     = TemplateGenerator::ARG_TEMP;
         $fl      = TemplateGenerator::ARG_FILTER;

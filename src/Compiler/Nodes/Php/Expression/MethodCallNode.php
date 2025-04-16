@@ -32,7 +32,7 @@ class MethodCallNode extends ExpressionNode
         ( function( ArgumentNode ...$args ) {} )( ...$args );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->dereferenceExpr( $this->object )
                .( $this->nullsafe ? '?->' : '->' )

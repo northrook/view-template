@@ -32,7 +32,7 @@ class VarPrintNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $_bp = TemplateGenerator::ARG_BEGIN_PRINT;
 

@@ -48,15 +48,16 @@ final class FragmentNode extends AreaNode
         };
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
-        $res = '';
+        $context ??= new PrintContext();
+        $output = '';
 
         foreach ( $this->children as $child ) {
-            $res .= $child->print( $context );
+            $output .= $child->print( $context );
         }
 
-        return $res;
+        return $output;
     }
 
     public function &getIterator() : Generator

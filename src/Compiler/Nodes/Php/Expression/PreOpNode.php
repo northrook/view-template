@@ -42,7 +42,7 @@ class PreOpNode extends ExpressionNode
      *
      * @throws CompileException
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $this->validate();
         return $context->prefixOp( $this, $this->operator, $this->var );

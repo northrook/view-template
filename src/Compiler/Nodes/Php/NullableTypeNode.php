@@ -19,7 +19,7 @@ class NullableTypeNode extends ComplexTypeNode
         public ?Position               $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '?'.$this->type->print( $context );
     }

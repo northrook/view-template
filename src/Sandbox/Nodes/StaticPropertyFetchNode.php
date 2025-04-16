@@ -19,7 +19,7 @@ class StaticPropertyFetchNode extends Expression\StaticPropertyFetchNode
         parent::__construct( $from->class, $from->name, $from->position );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return '$this->global->sandbox->prop('
                .$context->memberAsString( $this->class ).', '

@@ -14,7 +14,7 @@ abstract class Node implements IteratorAggregate
 {
     public ?Position $position = null;
 
-    abstract public function print( PrintContext $context ) : string;
+    abstract public function print( ?PrintContext $context ) : string;
 
     /**
      * @return Generator<self>

@@ -78,7 +78,7 @@ class SwitchNode extends StatementNode
         }
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $_switch = TemplateGenerator::ARG_SWITCH;
         $res     = $context->format(

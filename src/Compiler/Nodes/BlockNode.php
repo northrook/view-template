@@ -69,7 +69,7 @@ class BlockNode extends StatementNode
         return $node;
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( ! $this->block ) {
             return $this->printFilter( $context );

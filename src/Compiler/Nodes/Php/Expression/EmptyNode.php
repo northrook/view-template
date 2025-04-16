@@ -20,7 +20,7 @@ class EmptyNode extends ExpressionNode
         public ?Position      $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return 'empty('.$this->expr->print( $context ).')';
     }

@@ -21,7 +21,7 @@ class InNode extends ExpressionNode
         public ?Position      $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return 'in_array('
                .$this->needle->print( $context )

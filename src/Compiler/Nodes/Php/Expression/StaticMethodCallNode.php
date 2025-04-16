@@ -30,7 +30,7 @@ class StaticMethodCallNode extends ExpressionNode
         ( function( ArgumentNode ...$args ) {} )( ...$args );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $name = match ( true ) {
             $this->name instanceof VariableNode   => $this->name->print( $context ),

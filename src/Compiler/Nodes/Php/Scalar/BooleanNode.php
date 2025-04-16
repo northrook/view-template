@@ -19,7 +19,7 @@ class BooleanNode extends ScalarNode
         public ?Position $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $this->value ? 'true' : 'false';
     }

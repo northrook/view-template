@@ -40,7 +40,7 @@ class AssignNode extends ExpressionNode
      * @return string
      * @throws CompileException
      */
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         $this->validate();
         return $context->infixOp( $this, $this->var, $this->byRef ? ' = &' : ' = ', $this->expr );

@@ -21,7 +21,7 @@ class ConstantFetchNode extends ExpressionNode
         public ?Position $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         if ( $this->name->kind === NameNode::KindNormal ) {
             return match ( (string) $this->name ) {

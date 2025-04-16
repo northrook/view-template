@@ -12,6 +12,7 @@ namespace Core\View\Template\Compiler;
 use Core\View\Template\Compiler\Nodes\Php\{Expression, Scalar};
 use Core\View\Template\ContentType;
 use Support\PhpGenerator;
+use const Support\AUTO;
 
 /**
  * PHP printing helpers and context.
@@ -22,6 +23,8 @@ final class PrintContext
     public array $paramsExtraction = [];
 
     public array $blocks = [];
+
+    public bool $raw = false;
 
     private array $exprPrecedenceMap = [
         // [precedence, associativity] (-1 is %left, 0 is %nonassoc and 1 is %right)
@@ -74,8 +77,13 @@ final class PrintContext
     /** @var Escaper[] */
     private array $escaperStack = [];
 
-    public function __construct( ContentType $contentType = ContentType::HTML )
-    {
+    public function __construct(
+        ContentType $contentType = ContentType::HTML,
+        ?bool       $raw = AUTO,
+    ) {
+        if ( $raw !== AUTO ) {
+            $this->raw = $raw;
+        }
         $this->escaperStack[] = new Escaper( $contentType );
     }
 
@@ -268,6 +276,26 @@ final class PrintContext
         return $node instanceof Expression\BinaryOpNode
                 ? $this->binaryPrecedenceMap[$node->operator]
                 : $this->exprPrecedenceMap[$node::class] ?? null;
+    }
+
+    /**
+     * Prepare any variable for outputting.
+     *
+     * @param mixed       $var
+     * @param null|string $appendExport
+     * @param null|string $appendRaw
+     *
+     * @return string
+     */
+    public function output( mixed $var, ?string $appendExport = null, ?string $appendRaw = null ) : string
+    {
+        if ( $this->raw === false ) {
+            return 'echo '.\var_export( $var, true ).';'.$appendExport;
+        }
+        if ( ! \is_string( $var ) ) {
+            $var = \substr( \var_export( $var, true ), 1, -1 );
+        }
+        return $var.$appendRaw;
     }
 
     /**

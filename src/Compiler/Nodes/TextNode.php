@@ -11,6 +11,7 @@ namespace Core\View\Template\Compiler\Nodes;
 
 use Core\View\Template\Compiler\{Position, PrintContext};
 use Stringable;
+use const Support\AUTO;
 
 class TextNode extends AreaNode
 {
@@ -19,11 +20,15 @@ class TextNode extends AreaNode
         public ?Position $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context = AUTO ) : string
     {
-        return $this->content === ''
-                ? ''
-                : 'echo '.\var_export( $this->content, true ).";\n";
+        $context ??= new PrintContext();
+
+        if ( $this->content === '' ) {
+            return '';
+        }
+
+        return $context->output( $this->content, NEWLINE );
     }
 
     public function isWhitespace() : bool

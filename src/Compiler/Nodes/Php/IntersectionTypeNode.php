@@ -26,7 +26,7 @@ class IntersectionTypeNode extends ComplexTypeNode
         ( function( IdentifierNode|NameNode ...$args ) {} )( ...$types );
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->implode( $this->types, '&' );
     }

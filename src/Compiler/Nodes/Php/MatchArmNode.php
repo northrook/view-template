@@ -25,7 +25,7 @@ class MatchArmNode extends Node
         public ?Position      $position = null,
     ) {}
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return ( $this->conds ? $context->implode( $this->conds ) : 'default' )
                .' => '

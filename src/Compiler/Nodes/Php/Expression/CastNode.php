@@ -28,7 +28,7 @@ class CastNode extends ExpressionNode
         }
     }
 
-    public function print( PrintContext $context ) : string
+    public function print( ?PrintContext $context ) : string
     {
         return $context->prefixOp( $this, '('.$this->type.') ', $this->expr );
     }
