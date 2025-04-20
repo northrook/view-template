@@ -10,7 +10,7 @@ use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use SplFileInfo;
-use function Support\{key_hash, slug, str_includes};
+use function Support\{key_hash, normalize_path, slug, str_includes};
 
 /**
  * @internal
@@ -105,7 +105,10 @@ final class Autoloader
     {
         // Absolute paths
         if ( $name[0] === '/' || $name[0] === '\\' ) {
-            return $this->normalizePath( $referringName.'/../'.$name );
+            return normalize_path(
+                path      : "{$referringName}..{$name}",
+                traversal : true,
+            );
         }
 
         // scheme: prefixed paths
@@ -113,7 +116,10 @@ final class Autoloader
              && \str_contains( $name, ':' )
              && \ctype_alnum( \str_replace( ['+', '.', '-'], '', \strstr( $name, ':', true ) ) )
         ) {
-            return $this->normalizePath( $referringName.'/../'.$name );
+            return normalize_path(
+                path      : $referringName.'/../'.$name,
+                traversal : true,
+            );
         }
 
         return $name;
@@ -147,6 +153,8 @@ final class Autoloader
 
     public function templatePath( string $template ) : false|string
     {
+        $template = \str_ends_with( $template, '.latte' ) ? $template : $template.'.latte';
+
         // Return full valid paths early
         if ( \is_readable( $template ) && \is_file( $template ) ) {
             return $template;
@@ -175,7 +183,7 @@ final class Autoloader
                 throw new TemplateException( $message, __METHOD__ );
             }
 
-            $fileInfo = new SplFileInfo( $this->normalizePath( "{$directory}/{$template}" ) );
+            $fileInfo = new SplFileInfo( normalize_path( "{$directory}/{$template}" ) );
 
             if ( $fileInfo->isFile() ) {
                 return $fileInfo->getPathname();
@@ -183,7 +191,7 @@ final class Autoloader
         }
 
         foreach ( $this->directories as $directory ) {
-            $fileInfo = new SplFileInfo( $this->normalizePath( "{$directory}/{$template}" ) );
+            $fileInfo = new SplFileInfo( normalize_path( "{$directory}/{$template}" ) );
 
             if ( $fileInfo->isReadable() ) {
                 return $fileInfo->getPathname();
@@ -230,23 +238,5 @@ final class Autoloader
     {
         $this->templates = [];
         return $this;
-    }
-
-    // :: UTILITY
-
-    private function normalizePath( string $path ) : string
-    {
-        $fragments = [];
-
-        foreach ( \explode( '/', \strtr( $path, '\\', '/' ) ) as $fragment ) {
-            if ( $fragment === '..' && $fragments && \end( $fragments ) !== '..' ) {
-                \array_pop( $fragments );
-            }
-            elseif ( $fragment !== '.' ) {
-                $fragments[] = $fragment;
-            }
-        }
-
-        return \implode( DIR_SEP, \array_filter( $fragments ) );
     }
 }
