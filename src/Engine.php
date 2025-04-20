@@ -34,7 +34,7 @@ use stdClass;
 use Stringable;
 use ReflectionAttribute;
 use BadMethodCallException;
-use function Support\{class_id, file_purge, is_empty, is_path, key_hash, normalize_path, slug};
+use function Support\{file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 use const Support\AUTO;
 
 class Engine implements LazyService, Profilable, LoggerAwareInterface
@@ -689,6 +689,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         return $this->loader ??= new Autoloader(
             $this->templateDirectories,
             $this->preloadedTemplates,
+            $this->cacheDirectory,
         );
     }
 
@@ -889,11 +890,13 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     final public function pruneTemplateCache() : array
     {
+        // Check for duplicate view-template.hash.php files
+        // Validate autoloader_map.php entries
         throw new BadMethodCallException( __METHOD__.' not implemented yet.' );
     }
 
     /**
-     * Returns an 8 character hash based on Template content and used Extensions.
+     * Returns an 8-character hash based on Template content and used Extensions.
      *
      * @param string $name
      *
@@ -914,7 +917,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * Generates a 16 character alphanumeric cache key.
+     * Generates a 16-character alphanumeric cache key.
      *
      * @param string $name
      *

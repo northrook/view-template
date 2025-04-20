@@ -4,28 +4,39 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Engine;
 
+use Cache\{CachePoolTrait, LocalStorage};
 use Core\View\Template\Exception\{CompileException, TemplateException};
 use InvalidArgumentException;
+use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use SplFileInfo;
-use function Support\{str_includes};
+use function Support\{key_hash, slug, str_includes};
 
 /**
  * @internal
  */
 final class Autoloader
 {
+    use CachePoolTrait;
+
     /**
      * The autoloader will first match preloaded string `$templates` by `name`,
      * then search `$directories` until a match is found.
      *
-     * @param string[]             $directories
-     * @param array<string,string> $templates
+     * @param string[]                           $directories
+     * @param array<string,string>               $templates
+     * @param null|CacheItemPoolInterface|string $cache
      */
     public function __construct(
-        protected array & $directories = [],
-        protected array $templates = [],
-    ) {}
+        protected array &                    $directories = [],
+        protected array                    $templates = [],
+        null|string|CacheItemPoolInterface $cache,
+    ) {
+        if ( \is_string( $cache ) ) {
+            $cache = new LocalStorage( "{$cache}/autoloader_map.php" );
+        }
+        $this->assignCacheAdapter( $cache );
+    }
 
     public function getContent( string $name ) : string
     {
@@ -35,11 +46,18 @@ final class Autoloader
         }
 
         // Return valid preloaded templates
-        if ( $this->hasTemplate( $name ) ) {
+        if ( isset( $this->templates[$name] ) ) {
             return $this->templates[$name];
         }
 
-        $template = \file_get_contents( $this->templatePath( $name ) );
+        $filePath = $this->templatePath( $name );
+
+        if ( ! $filePath ) {
+            $message = "Unable to load view: '{$name}', it could not be found in any provided source.";
+            throw new TemplateException( $message, __METHOD__ );
+        }
+
+        $template = \file_get_contents( $filePath );
 
         if ( $template ) {
             return $this->templates[$name] = $template;
@@ -73,10 +91,18 @@ final class Autoloader
         }
 
         // Return matched preloaded string templates early
-        if ( $this->hasTemplate( $name ) ) {
+        if ( isset( $this->templates[$name] ) ) {
             return $name;
         }
 
+        return $this->getCache(
+            'name.'.key_hash( 'xxh32', $name, $referringName ),
+            fn() => $this->resolveReferredName( $name, $referringName ),
+        );
+    }
+
+    private function resolveReferredName( string $name, string $referringName ) : string
+    {
         // Absolute paths
         if ( $name[0] === '/' || $name[0] === '\\' ) {
             return $this->normalizePath( $referringName.'/../'.$name );
@@ -107,13 +133,33 @@ final class Autoloader
         return $hash ? \hash( $hash, $id ) : $id;
     }
 
-    protected function templatePath( string $template ) : string
+    public function templateExists( string $template ) : bool
+    {
+        try {
+            return (bool) (
+                $this->templates[$template] ?? $this->templatePath( $template )
+            );
+        }
+        catch ( TemplateException ) {
+            return false;
+        }
+    }
+
+    public function templatePath( string $template ) : false|string
     {
         // Return full valid paths early
         if ( \is_readable( $template ) && \is_file( $template ) ) {
             return $template;
         }
 
+        return $this->getCache(
+            slug( "path.{$template}", '.' ),
+            fn() => $this->resolveTemplatePath( $template ),
+        );
+    }
+
+    private function resolveTemplatePath( string $template ) : false|string
+    {
         if ( \str_starts_with( $template, '@' ) ) {
             if ( ! \str_contains( $template, '/' ) ) {
                 $message = 'Namespaced view calls must use the forward slash separator.';
@@ -129,7 +175,7 @@ final class Autoloader
                 throw new TemplateException( $message, __METHOD__ );
             }
 
-            $fileInfo = new SplFileInfo( "{$directory}/{$template}" );
+            $fileInfo = new SplFileInfo( $this->normalizePath( "{$directory}/{$template}" ) );
 
             if ( $fileInfo->isFile() ) {
                 return $fileInfo->getPathname();
@@ -137,16 +183,14 @@ final class Autoloader
         }
 
         foreach ( $this->directories as $directory ) {
-            $fileInfo = new SplFileInfo( "{$directory}/{$template}" );
+            $fileInfo = new SplFileInfo( $this->normalizePath( "{$directory}/{$template}" ) );
 
             if ( $fileInfo->isReadable() ) {
                 return $fileInfo->getPathname();
             }
         }
 
-        $message = "Unable to load view: '{$template}', it could not be found in any provided source.";
-
-        throw new TemplateException( $message, __METHOD__ );
+        return false;
     }
 
     // :: Preloaded templates
@@ -176,11 +220,6 @@ final class Autoloader
         return $this;
     }
 
-    public function hasTemplate( string $name ) : bool
-    {
-        return isset( $this->templates[$name] );
-    }
-
     public function removeTemplate( string $name ) : self
     {
         unset( $this->templates[$name] );
@@ -197,21 +236,17 @@ final class Autoloader
 
     private function normalizePath( string $path ) : string
     {
-        $res = [];
+        $fragments = [];
 
-        foreach ( \explode( '/', \strtr( $path, '\\', '/' ) ) as $part ) {
-            if ( $part === '..' && $res && \end( $res ) !== '..' ) {
-                \array_pop( $res );
+        foreach ( \explode( '/', \strtr( $path, '\\', '/' ) ) as $fragment ) {
+            if ( $fragment === '..' && $fragments && \end( $fragments ) !== '..' ) {
+                \array_pop( $fragments );
             }
-            elseif ( $part !== '.' ) {
-                $res[] = $part;
+            elseif ( $fragment !== '.' ) {
+                $fragments[] = $fragment;
             }
         }
 
-        $path = \implode( DIR_SEP, $res );
-
-        dump( $path );
-
-        return $path;
+        return \implode( DIR_SEP, \array_filter( $fragments ) );
     }
 }
