@@ -307,7 +307,7 @@ abstract class Template
     }
 
     /**
-     * Creates block if it doesn't exist and checks if content type is the same.
+     * Creates a {@see Block} if it doesn't exist and checks if {@see ContentType} is the same.
      *
      * @internal
      *

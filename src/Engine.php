@@ -162,22 +162,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         return $string;
     }
 
-    public function enableExtension( string $extension ) : void
-    {
-        if ( \array_key_exists( $extension, $this->parked ) ) {
-            $this->extensions[$extension] = $this->parked[$extension];
-            unset( $this->parked[$extension] );
-        }
-    }
-
-    public function disableExtension( string $extension ) : void
-    {
-        if ( \array_key_exists( $extension, $this->extensions ) ) {
-            $this->parked[$extension] = $this->extensions[$extension];
-            unset( $this->extensions[$extension] );
-        }
-    }
-
     /**
      * Renders template to string.
      *
@@ -218,7 +202,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     }
 
     /**
-     * Creates template object.
+     * Creates a {@see Template} object.
      *
      * @internal
      *
@@ -505,167 +489,6 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
         return \array_filter( (array) $parameters, fn( $key ) => $key[0] !== "\0", ARRAY_FILTER_USE_KEY );
     }
-
-    /**
-     * Registers run-time filter.
-     *
-     * @param string   $name
-     * @param callable $callback
-     *
-     * @return Engine
-     */
-    public function addFilter( string $name, callable $callback ) : static
-    {
-        if ( ! \preg_match( '#^[a-z]\w*$#iD', $name ) ) {
-            throw new LogicException( "Invalid filter name '{$name}'." );
-        }
-
-        $this->filters->add( $name, $callback );
-        return $this;
-    }
-
-    /**
-     * Registers filter loader.
-     *
-     * @param callable $loader
-     *
-     * @return Engine
-     */
-    public function addFilterLoader( callable $loader ) : static
-    {
-        $this->filters->add( null, $loader );
-        return $this;
-    }
-
-    /**
-     * Returns all run-time filters.
-     *
-     * @return callable[]
-     */
-    public function getFilters() : array
-    {
-        return $this->filters->getAll();
-    }
-
-    /**
-     * Call a run-time filter.
-     *
-     * @param string $name
-     * @param array  $args
-     *
-     * @return mixed
-     */
-    public function invokeFilter( string $name, array $args ) : mixed
-    {
-        return ( $this->filters->{$name} )( ...$args );
-    }
-
-    /**
-     * Adds new extension.
-     *
-     * @param Extension $extension
-     *
-     * @return Engine
-     */
-    public function addExtension( Extension $extension ) : self
-    {
-        // $id = class_id( $extension );
-        $id = $extension::class;
-
-        if ( \array_key_exists( $id, $this->extensions ) ) {
-            return $this;
-        }
-
-        $this->extensions[$id] = $extension;
-
-        foreach ( $extension->getFilters() as $name => $value ) {
-            $this->filters->add( $name, $value );
-        }
-
-        foreach ( $extension->getFunctions() as $name => $value ) {
-            $this->functions->add( $name, $value );
-        }
-
-        foreach ( $extension->getProviders() as $name => $value ) {
-            $this->providers->{$name} = $value;
-        }
-        return $this;
-    }
-
-    /**
-     * @return Extension[]
-     */
-    public function getExtensions() : array
-    {
-        return $this->extensions;
-    }
-
-    /**
-     * Registers run-time function.
-     *
-     * @param string   $name
-     * @param callable $callback
-     *
-     * @return Engine
-     */
-    public function addFunction( string $name, callable $callback ) : static
-    {
-        if ( ! \preg_match( '#^[a-z]\w*$#iD', $name ) ) {
-            throw new LogicException( "Invalid function name '{$name}'." );
-        }
-
-        $this->functions->add( $name, $callback );
-        return $this;
-    }
-
-    /**
-     * Call a run-time function.
-     *
-     * @param string $name
-     * @param array  $args
-     *
-     * @return mixed
-     */
-    public function invokeFunction( string $name, array $args ) : mixed
-    {
-        return ( $this->functions->{$name} )( null, ...$args );
-    }
-
-    /**
-     * @return callable[]
-     */
-    public function getFunctions() : array
-    {
-        return $this->functions->getAll();
-    }
-
-    /**
-     * Adds new provider.
-     *
-     * @param string $name
-     * @param mixed  $provider
-     *
-     * @return Engine
-     */
-    public function addProvider( string $name, mixed $provider ) : static
-    {
-        if ( ! \preg_match( '#^[a-z]\w*$#iD', $name ) ) {
-            throw new LogicException( "Invalid provider name '{$name}'." );
-        }
-
-        $this->providers->{$name} = $provider;
-        return $this;
-    }
-
-    /**
-     * Returns all providers.
-     *
-     * @return array
-     */
-    public function getProviders() : array
-    {
-        return (array) $this->providers;
-    }
     // </editor-fold>
 
     // <editor-fold desc="Loader">
@@ -744,9 +567,11 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
         }
 
         // Solving atomicity to work everywhere is really pain in the ass.
-        // 1) We want to do as little as possible IO calls on production and also directory and file can be not writable
-        // so on Linux we include the file directly without shared lock, therefore, the file must be created atomically by renaming.
-        // 2) On Windows file cannot be renamed-to while is open (ie by include), so we have to acquire a lock.
+        // 1) We want to do as little as possible IO calls on production.
+        // Directory and file can be not writable, so on Linux we include
+        // the file directly without a shared lock,
+        // therefore, the file must be created atomically by renaming.
+        // On Windows files cannot be renamed-to while open, so we have to acquire a lock.
         $cacheFile = $this->getCacheFile( $name );
         $cacheKey  = $this->autoRefresh ? $this->getCacheSignature( $name ) : null;
 
@@ -824,11 +649,224 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     // </editor-fold>
 
+    // <editor-fold desc="Extensions">
+
+    /**
+     * Adds new extension.
+     *
+     * @param Extension $extension
+     *
+     * @return Engine
+     */
+    public function addExtension( Extension $extension ) : self
+    {
+        // $id = class_id( $extension );
+        $id = $extension::class;
+
+        if ( \array_key_exists( $id, $this->extensions ) ) {
+            return $this;
+        }
+
+        $this->extensions[$id] = $extension;
+
+        foreach ( $extension->getFilters() as $name => $value ) {
+            $this->filters->add( $name, $value );
+        }
+
+        foreach ( $extension->getFunctions() as $name => $value ) {
+            $this->functions->add( $name, $value );
+        }
+
+        foreach ( $extension->getProviders() as $name => $value ) {
+            \assert(
+                Extension::validName( $name ),
+                "Invalid function name '{$name}'.",
+            );
+            $this->providers->{$name} = $value;
+        }
+        return $this;
+    }
+
+    /**
+     * @return Extension[]
+     */
+    public function getExtensions() : array
+    {
+        return $this->extensions;
+    }
+
+    /**
+     * @internal
+     *
+     * @param string $extension
+     *
+     * @return self
+     */
+    public function enableExtension( string $extension ) : self
+    {
+        if ( \array_key_exists( $extension, $this->parked ) ) {
+            $this->extensions[$extension] = $this->parked[$extension];
+            unset( $this->parked[$extension] );
+        }
+        return $this;
+    }
+
+    /**
+     * @internal
+     *
+     * @param string $extension
+     *
+     * @return self
+     */
+    public function disableExtension( string $extension ) : self
+    {
+        if ( \array_key_exists( $extension, $this->extensions ) ) {
+            $this->parked[$extension] = $this->extensions[$extension];
+            unset( $this->extensions[$extension] );
+        }
+        return $this;
+    }
+
+    // </editor-fold>
+
+    // <editor-fold desc="Filters">
+
+    /**
+     * Registers run-time filter.
+     *
+     * @param string   $name
+     * @param callable $callback
+     *
+     * @return Engine
+     */
+    public function addFilter( string $name, callable $callback ) : static
+    {
+        $this->filters->add( $name, $callback );
+        return $this;
+    }
+
+    /**
+     * Registers filter loader.
+     *
+     * @param callable $loader
+     *
+     * @return Engine
+     */
+    public function addFilterLoader( callable $loader ) : static
+    {
+        $this->filters->add( null, $loader );
+        return $this;
+    }
+
+    /**
+     * Returns all run-time filters.
+     *
+     * @return callable[]
+     */
+    public function getFilters() : array
+    {
+        return $this->filters->getAll();
+    }
+
+    /**
+     * Call a run-time filter.
+     *
+     * @param string $name
+     * @param array  $args
+     *
+     * @return mixed
+     */
+    public function invokeFilter( string $name, array $args ) : mixed
+    {
+        \assert(
+            Extension::validName( $name ),
+            "Invalid function name '{$name}'.",
+        );
+        return ( $this->filters->{$name} )( ...$args );
+    }
+
+    // </editor-fold>
+
+    // <editor-fold desc="Functions">
+
+    /**
+     * Registers run-time function.
+     *
+     * @param string   $name
+     * @param callable $callback
+     *
+     * @return Engine
+     */
+    public function addFunction( string $name, callable $callback ) : static
+    {
+        $this->functions->add( $name, $callback );
+        return $this;
+    }
+
+    /**
+     * Call a run-time function.
+     *
+     * @param string $name
+     * @param array  $args
+     *
+     * @return mixed
+     */
+    public function invokeFunction( string $name, array $args ) : mixed
+    {
+        \assert(
+            Extension::validName( $name ),
+            "Invalid function name '{$name}'.",
+        );
+        return ( $this->functions->{$name} )( null, ...$args );
+    }
+
+    /**
+     * @return callable[]
+     */
+    public function getFunctions() : array
+    {
+        return $this->functions->getAll();
+    }
+
+    // </editor-fold>
+
+    // <editor-fold desc="Providers">
+
+    /**
+     * Adds new provider.
+     *
+     * @param string $name
+     * @param mixed  $provider
+     *
+     * @return Engine
+     */
+    public function addProvider( string $name, mixed $provider ) : static
+    {
+        \assert(
+            Extension::validName( $name ),
+            "Invalid provider name '{$name}'.",
+        );
+
+        $this->providers->{$name} = $provider;
+        return $this;
+    }
+
+    /**
+     * Returns all providers.
+     *
+     * @return array
+     */
+    public function getProviders() : array
+    {
+        return (array) $this->providers;
+    }
+    // </editor-fold>
+
     // ? Do not remove the old cached template, so it can be used as fallback on Exception
     // <editor-fold desc="Cache">
 
     /**
-     * Sets path to temporary directory.
+     * Sets a path to the cache directory.
      *
      * @param ?string $path
      *
@@ -908,9 +946,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
         foreach ( $this->extensions as $extension ) {
             \assert( \class_exists( $extension::class ) );
-            $signature ^= \filemtime(
-                ( new ReflectionClass( $extension::class ) )->getFileName(),
-            );
+            $signature ^= \filemtime( ( new ReflectionClass( $extension::class ) )->getFileName() );
         }
 
         return \hash( 'xxh32', $signature.$this->getLoader()->getContent( $name ) );

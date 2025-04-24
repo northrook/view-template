@@ -22,10 +22,10 @@ use const Support\{ENCODED_APOSTROPHE, ENCODED_QUOTE, ENCODED_SPACE};
  *
  * @internal
  */
-class Filters
+final class Filters
 {
     /**
-     * TODO@ Create globally settable default
+     * TODO: Create globally settable default
      *
      * @deprecated
      */
@@ -348,7 +348,7 @@ class Filters
     }
 
     /**
-     * Sanitizes string for use inside href attribute.
+     * Sanitizes string for use inside the href attribute.
      *
      * @param mixed $value
      *

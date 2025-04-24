@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Runtime;
 
+use Core\View\Template\Extension;
 use Core\View\Template\Support\Helpers;
 use AllowDynamicProperties;
 use LogicException;
@@ -20,7 +21,7 @@ use ReflectionException;
  * @internal
  */
 #[AllowDynamicProperties]
-class FunctionExecutor
+final class FunctionExecutor
 {
     /** @var callable[] */
     private array $_list = [];
@@ -38,6 +39,11 @@ class FunctionExecutor
      */
     public function add( string $name, callable $callback ) : static
     {
+        \assert(
+            Extension::validName( $name ),
+            "Invalid function name '{$name}'.",
+        );
+
         $this->_list[$name] = $callback;
         unset( $this->{$name}, $this->_aware[$name] );
         return $this;

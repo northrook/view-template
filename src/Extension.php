@@ -113,4 +113,11 @@ abstract class Extension implements LoggerAwareInterface
     ) : stdClass {
         return (object) \get_defined_vars();
     }
+
+    final public static function validName( string $name ) : bool
+    {
+        return $name !== ''
+               && \ctype_alpha( $name[0] )
+               && \ctype_alnum( \str_replace( '_', '', $name ) );
+    }
 }

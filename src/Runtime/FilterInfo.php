@@ -17,7 +17,7 @@ use Core\View\Template\Exception\RuntimeException;
  *
  * @internal
  */
-class FilterInfo
+final class FilterInfo
 {
     public ?ContentType $contentType = null;
 

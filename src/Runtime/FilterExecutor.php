@@ -14,7 +14,7 @@ use LogicException;
 use ReflectionException;
 use Stringable;
 
-use Core\View\Template\{ContentType, Support\Helpers, Exception\RuntimeException};
+use Core\View\Template\{ContentType, Extension, Support\Helpers, Exception\RuntimeException};
 
 /**
  * Filter executor.
@@ -22,7 +22,7 @@ use Core\View\Template\{ContentType, Support\Helpers, Exception\RuntimeException
  * @internal
  */
 #[AllowDynamicProperties]
-class FilterExecutor
+final class FilterExecutor
 {
     /** @var callable[] */
     private array $_dynamic = [];
@@ -40,6 +40,11 @@ class FilterExecutor
      */
     public function add( ?string $name, callable $callback ) : static
     {
+        \assert(
+            $name === null || Extension::validName( $name ),
+            "Invalid filter name '{$name}'.",
+        );
+
         if ( $name === null ) {
             \array_unshift( $this->_dynamic, $callback );
         }

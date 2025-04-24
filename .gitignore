@@ -18,6 +18,8 @@
 /public
 /var
 /build
+/tests
+/templates
 /index.php
 /*.html
 *.latte
