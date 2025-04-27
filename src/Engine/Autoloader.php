@@ -30,7 +30,7 @@ final class Autoloader
     public function __construct(
         protected array &                    $directories = [],
         protected array                    $templates = [],
-        null|string|CacheItemPoolInterface $cache,
+        null|string|CacheItemPoolInterface $cache = null,
     ) {
         if ( \is_string( $cache ) ) {
             $cache = new LocalStorage( "{$cache}/autoloader_map.php" );
@@ -188,6 +188,10 @@ final class Autoloader
             if ( $fileInfo->isFile() ) {
                 return $fileInfo->getPathname();
             }
+        }
+
+        if ( \str_starts_with( $template, 'templates'.DIR_SEP ) ) {
+            $template = \substr( $template, 10 );
         }
 
         foreach ( $this->directories as $directory ) {

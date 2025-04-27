@@ -880,15 +880,22 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
 
     final public function getCacheFile( string $name ) : string
     {
-        $path = $this->cacheDirectory;
-        if ( is_path( $name ) ) {
-            $path .= DIR_SEP;
-            $path .= slug(
-                \implode( '.', \array_slice( \explode( DIR_SEP, $name ), -2 ) ),
-            );
-            $path .= '--';
+        $key  = $this->getCacheKey( $name );
+        $file = $this->getLoader()->templatePath( $name );
+
+        $after = \strpos( $file, DIR_SEP.'templates'.DIR_SEP );
+
+        if ( $after === false ) {
+            throw new LogicException( 'Unable to find template path.' );
         }
-        return $path.$this->getCacheKey( $name ).'.php';
+
+        $name = \substr( $file, $after + 11 );
+
+        if ( \str_ends_with( $name, '.latte' ) ) {
+            $name = \substr( $name, 0, -6 );
+        }
+
+        return normalize_path( [$this->cacheDirectory, slug( $name, '.' )."-{$key}.php"] );
     }
 
     /**
