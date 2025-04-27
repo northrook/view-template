@@ -26,7 +26,16 @@ abstract class Node implements IteratorAggregate
         false && yield;
     }
 
-    public static function traverse(
+    /**
+     * Walk a {@see Node} using the {@see NodeTraverser}.
+     *
+     * @param Node          $node
+     * @param null|callable $enter
+     * @param null|callable $leave
+     *
+     * @return Node
+     */
+    final public static function traverse(
         Node      $node,
         ?callable $enter = null,
         ?callable $leave = null,
