@@ -53,6 +53,21 @@ class ElementNode extends AreaNode
         $this->tagNode = new AuxiliaryNode( $this->printStartTag( ... ) );
     }
 
+    /**
+     * @template ContentNode
+     *
+     * @param null|class-string<ContentNode> $assert
+     *
+     * @return ($assert is null ? Node[] : ContentNode<Node>)
+     */
+    final public function getContent( ?string $assert = null ) : mixed
+    {
+        if ( $assert && ! $this->content instanceof $assert ) {
+            return $this->content;
+        }
+        return $this->content?->children ?? [];
+    }
+
     public function getAttribute( string $name ) : string|Node|bool|null
     {
         foreach ( $this->attributes?->children as $child ) {
