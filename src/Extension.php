@@ -31,7 +31,7 @@ abstract class Extension implements LoggerAwareInterface
     }
 
     /**
-     * Initializes before template is compiler.
+     * Initializes before the template is compiled.
      *
      * @param Engine $engine
      */
@@ -100,7 +100,7 @@ abstract class Extension implements LoggerAwareInterface
     }
 
     /**
-     * Initializes before template is rendered.
+     * Initializes before the template is rendered.
      *
      * @param Template $template
      */
