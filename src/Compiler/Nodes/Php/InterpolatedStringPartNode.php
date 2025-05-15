@@ -9,28 +9,25 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler\Nodes\Php;
 
-use Core\View\Template\Compiler\Node;
-use Core\View\Template\Compiler\Position;
-use Core\View\Template\Compiler\PrintContext;
+use Generator;
+use LogicException;
 
+use Core\View\Template\Compiler\{Node, Position, PrintContext};
 
 class InterpolatedStringPartNode extends Node
 {
-	public function __construct(
-		public string $value,
-		public ?Position $position = null,
-	) {
-	}
+    public function __construct(
+        public string    $value,
+        public ?Position $position = null,
+    ) {}
 
+    public function print( ?PrintContext $context ) : string
+    {
+        throw new LogicException( 'Cannot directly print InterpolatedStringPart' );
+    }
 
-	public function print(PrintContext $context): string
-	{
-		throw new \LogicException('Cannot directly print InterpolatedStringPart');
-	}
-
-
-	public function &getIterator(): \Generator
-	{
-		false && yield;
-	}
+    public function &getIterator() : Generator
+    {
+        false && yield;
+    }
 }
