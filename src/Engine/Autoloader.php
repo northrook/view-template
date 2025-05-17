@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Engine;
 
-use Cache\{CachePoolTrait, LocalStorage};
+use Cache\{CacheHandler, LocalStorage};
 use Core\View\Template\Exception\{CompileException, TemplateException};
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -17,7 +17,7 @@ use function Support\{key_hash, normalize_path, slug, str_includes};
  */
 final class Autoloader
 {
-    use CachePoolTrait;
+    use CacheHandler;
 
     /**
      * The autoloader will first match preloaded string `$templates` by `name`,

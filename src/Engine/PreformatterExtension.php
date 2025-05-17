@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Engine;
 
+use _Dev\Attribute\Experimental;
 use Core\View\Template\Extension;
 use Core\View\Template\Compiler\{Node, NodeTraverser, Traverser\NodeTraverserMethods};
 use Core\View\Template\Compiler\Nodes\{FragmentNode, TemplateNode, TextNode};
@@ -11,9 +12,7 @@ use Core\View\Template\Compiler\Nodes\Html\ElementNode;
 use Core\View\Template\Compiler\Nodes\Php\ExpressionNode;
 use Override;
 
-/**
- * @version EXPERIMENTAL
- */
+#[Experimental]
 final class PreformatterExtension extends Extension
 {
     use NodeTraverserMethods;

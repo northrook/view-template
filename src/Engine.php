@@ -10,13 +10,12 @@ declare(strict_types=1);
 namespace Core\View\Template;
 
 use Core\View\Template\Engine\{Autoloader, PreformatterExtension};
-use Core\Interface\LazyService;
+use Core\Interface\{LazyService, LogHandler, Loggable};
 use Core\Profiler\{ClerkProfiler};
 use Core\Profiler\Interface\Profilable;
 use Core\View\Template\Sandbox\SandboxExtension;
 use Exception;
-use Latte\Loader;
-use Psr\Log\{LoggerAwareInterface, LoggerInterface};
+use Psr\Log\{LoggerInterface};
 use Symfony\Component\Stopwatch\Stopwatch;
 use Core\View\Template\Compiler\{TemplateFilter};
 use Core\View\Template\Compiler\Nodes\TemplateNode;
@@ -37,11 +36,13 @@ use BadMethodCallException;
 use function Support\{file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 use const Support\AUTO;
 
-class Engine implements LazyService, Profilable, LoggerAwareInterface
+class Engine implements LazyService, Profilable, Loggable
 {
+    use LogHandler;
+
     private ContentType $contentType = ContentType::HTML;
 
-    private null|Autoloader|Loader $loader = null;
+    private ?Autoloader $loader = null;
 
     private FunctionExecutor $functions;
 
@@ -494,20 +495,20 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
     // <editor-fold desc="Loader">
 
     /**
-     * @param null|Autoloader|Loader $loader
+     * @param null|Autoloader $loader
      *
      * @return $this
      */
-    public function setLoader( null|Autoloader|Loader $loader ) : static
+    public function setLoader( ?Autoloader $loader ) : static
     {
         $this->loader = $loader;
         return $this;
     }
 
     /**
-     * @return Autoloader|Loader
+     * @return Autoloader
      */
-    final public function getLoader() : Autoloader|Loader
+    final public function getLoader() : Autoloader
     {
         return $this->loader ??= new Autoloader(
             $this->templateDirectories,
@@ -916,12 +917,7 @@ class Engine implements LazyService, Profilable, LoggerAwareInterface
             return true;
         }
         catch ( Exception $exception ) {
-            if ( $this->logger ) {
-                $this->logger->error( $exception->getMessage() );
-            }
-            else {
-                throw new TemplateException( $exception->getMessage(), __METHOD__ );
-            }
+            $this->log( $exception );
             return false;
         }
     }

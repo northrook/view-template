@@ -9,18 +9,19 @@ declare(strict_types=1);
 
 namespace Core\View\Template;
 
+use Core\Interface\{LogHandler, Loggable};
 use Core\View\Template\Compiler\Node;
 use Core\View\Template\Compiler\Nodes\TemplateNode;
 use Core\View\Template\Runtime\Template;
-use Psr\Log\{LoggerAwareInterface, LoggerInterface};
+use Psr\Log\{LoggerInterface};
 use stdClass;
 
 /**
  * View Template {@see Engine} extension.
  */
-abstract class Extension implements LoggerAwareInterface
+abstract class Extension implements Loggable
 {
-    protected ?LoggerInterface $logger = null;
+    use LogHandler;
 
     /**
      * @param ?LoggerInterface $logger
