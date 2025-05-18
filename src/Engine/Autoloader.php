@@ -6,14 +6,13 @@ namespace Core\View\Template\Engine;
 
 use Cache\{CacheHandler, LocalStorage};
 use Core\View\Template\Exception\{CompileException, TemplateException};
-use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use SplFileInfo;
 use function Support\{key_hash, normalize_path, slug, str_includes};
 
 /**
- * @internal
+ * @used-by Engine
  */
 final class Autoloader
 {
@@ -28,7 +27,7 @@ final class Autoloader
      * @param null|CacheItemPoolInterface|string $cache
      */
     public function __construct(
-        protected array &                    $directories = [],
+        protected array                    $directories = [],
         protected array                    $templates = [],
         null|string|CacheItemPoolInterface $cache = null,
     ) {
@@ -205,6 +204,23 @@ final class Autoloader
         return false;
     }
 
+    /**
+     * @param string          $directory
+     * @param null|int|string $key
+     *
+     * @return $this
+     */
+    public function addDirectory( string $directory, null|int|string $key = null ) : self
+    {
+        if ( $key ) {
+            $this->directories[$key] ??= $directory;
+        }
+        else {
+            $this->directories[] = $directory;
+        }
+        return $this;
+    }
+
     // :: Preloaded templates
 
     /**
@@ -215,12 +231,16 @@ final class Autoloader
     public function setTemplates( array $templates ) : self
     {
         foreach ( $templates as $name => $template ) {
-            if ( \is_int( $name ) ) {
-                throw new InvalidArgumentException( 'Template name must be a string.' );
-            }
-            if ( ! \is_string( $template ) || ! $template instanceof Stringable ) {
-                throw new InvalidArgumentException( 'Templates must be a string.' );
-            }
+            \assert(
+                \is_int( $name ),
+                'Template name must be a string.',
+            );
+
+            \assert(
+                \is_string( $template ) || $template instanceof Stringable,
+                'Templates must be a string.',
+            );
+
             $this->templates[$name] = (string) $template;
         }
         return $this;

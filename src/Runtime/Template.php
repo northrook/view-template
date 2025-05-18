@@ -172,7 +172,7 @@ abstract class Template
      */
     final public function createTemplate( string $name, array $params, string $referenceType ) : self
     {
-        $name = $this->engine->getLoader()->getReferredName( $name, $this->name );
+        $name = $this->engine->loader->getReferredName( $name, $this->name );
 
         $referred = $referenceType === 'sandbox'
                 ? ( clone $this->engine )->setSandboxMode()->createTemplate( $name, $params )
@@ -204,8 +204,10 @@ abstract class Template
      *
      * @throws Throwable
      */
-    public function renderToContentType( string|Closure|null $mod, ?string $block = null ) : void
-    {
+    public function renderToContentType(
+        string|Closure|null $mod,
+        ?string             $block = null,
+    ) : void {
         $this->filter(
             fn() => $this->render( $block ),
             $mod,

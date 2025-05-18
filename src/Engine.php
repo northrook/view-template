@@ -41,8 +41,6 @@ class Engine implements LazyService, Profilable, Loggable
 
     private ContentType $contentType = ContentType::HTML;
 
-    private ?Autoloader $loader = null;
-
     private ?ClerkProfiler $profiler = null;
 
     private FunctionExecutor $functions;
@@ -60,8 +58,6 @@ class Engine implements LazyService, Profilable, Loggable
 
     private bool $strictTypes = false;
 
-    private bool $autoRefresh = true;
-
     private bool $strictParsing = false;
 
     private bool $sandboxed = false;
@@ -69,6 +65,12 @@ class Engine implements LazyService, Profilable, Loggable
     private ?string $phpBinary = null;
 
     private ?string $cacheKey;
+
+    protected ?string $cacheDirectory = null;
+
+    protected bool $autoRefresh = true;
+
+    public readonly Autoloader $loader;
 
     // <editor-fold desc="Instantiation">
 
@@ -81,9 +83,9 @@ class Engine implements LazyService, Profilable, Loggable
      * @param bool                    $cache
      */
     public function __construct(
-        private ?string       $cacheDirectory = null,
-        protected array       $templateDirectories = [],
-        protected array       $preloadedTemplates = [],
+        ?string               $cacheDirectory = null,
+        array                 $templateDirectories = [],
+        array                 $preloadedTemplates = [],
         private ?string       $locale = null,
         private readonly bool $preformatter = false,
         protected bool        $cache = true,
@@ -92,6 +94,12 @@ class Engine implements LazyService, Profilable, Loggable
         $this->filters   = new FilterExecutor();
         $this->functions = new FunctionExecutor();
         $this->providers = new stdClass();
+        $this->loader    = new Autoloader(
+            $templateDirectories,
+            $preloadedTemplates,
+            $this->cacheDirectory,
+        );
+
         $this->addExtension( new CoreExtension() );
         if ( $this->preformatter ) {
             $this->addExtension( new PreformatterExtension() );
@@ -347,7 +355,7 @@ class Engine implements LazyService, Profilable, Loggable
             throw new LogicException( 'In sandboxed mode you need to set a security policy.' );
         }
 
-        $template = $this->getLoader()->getContent( $name );
+        $template = $this->loader->getContent( $name );
 
         try {
             $node = $this->parse( $template );
@@ -483,37 +491,9 @@ class Engine implements LazyService, Profilable, Loggable
 
     // <editor-fold desc="Loader">
 
-    /**
-     * @param null|Autoloader $loader
-     *
-     * @return $this
-     */
-    public function setLoader( ?Autoloader $loader ) : static
-    {
-        $this->loader = $loader;
-        return $this;
-    }
-
-    /**
-     * @return Autoloader
-     */
-    final public function getLoader() : Autoloader
-    {
-        return $this->loader ??= new Autoloader(
-            $this->templateDirectories,
-            $this->preloadedTemplates,
-            $this->cacheDirectory,
-        );
-    }
-
     final public function addTemplateDirectory( string $directory, null|int|string $key = null ) : self
     {
-        if ( $key ) {
-            $this->templateDirectories[$key] ??= $directory;
-        }
-        else {
-            $this->templateDirectories[] = $directory;
-        }
+        $this->loader->addDirectory( $directory, $key );
         return $this;
     }
 
@@ -871,7 +851,7 @@ class Engine implements LazyService, Profilable, Loggable
     final public function getCacheFile( string $name ) : string
     {
         $key  = $this->getCacheKey( $name );
-        $file = $this->getLoader()->templatePath( $name );
+        $file = $this->loader->templatePath( $name );
 
         $after = \strpos( $file, DIR_SEP.'templates'.DIR_SEP );
 
@@ -941,7 +921,7 @@ class Engine implements LazyService, Profilable, Loggable
             $signature ^= \filemtime( ( new ReflectionClass( $extension::class ) )->getFileName() );
         }
 
-        return \hash( 'xxh32', $signature.$this->getLoader()->getContent( $name ) );
+        return \hash( 'xxh32', $signature.$this->loader->getContent( $name ) );
     }
 
     /**
@@ -986,7 +966,7 @@ class Engine implements LazyService, Profilable, Loggable
             $this->cacheKey = key_hash( 'xxh32', ...$signature );
         }
 
-        return $this->cacheKey.key_hash( 'xxh32', $this->getLoader()->getUniqueId( $name ) );
+        return $this->cacheKey.key_hash( 'xxh32', $this->loader->getUniqueId( $name ) );
     }
     // </editor-fold>)
 }
