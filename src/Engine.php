@@ -15,7 +15,6 @@ use Core\Profiler\{ClerkProfiler};
 use Core\Profiler\Interface\Profilable;
 use Core\View\Template\Sandbox\SandboxExtension;
 use Exception;
-use Psr\Log\{LoggerInterface};
 use Symfony\Component\Stopwatch\Stopwatch;
 use Core\View\Template\Compiler\{TemplateFilter};
 use Core\View\Template\Compiler\Nodes\TemplateNode;
@@ -43,6 +42,8 @@ class Engine implements LazyService, Profilable, Loggable
     private ContentType $contentType = ContentType::HTML;
 
     private ?Autoloader $loader = null;
+
+    private ?ClerkProfiler $profiler = null;
 
     private FunctionExecutor $functions;
 
@@ -78,18 +79,14 @@ class Engine implements LazyService, Profilable, Loggable
      * @param null|string             $locale
      * @param bool                    $preformatter
      * @param bool                    $cache
-     * @param ?ClerkProfiler          $profiler
-     * @param ?LoggerInterface        $logger
      */
     public function __construct(
-        private ?string            $cacheDirectory = null,
-        protected array            $templateDirectories = [],
-        protected array            $preloadedTemplates = [],
-        private ?string            $locale = null,
-        private readonly bool      $preformatter = false,
-        protected bool             $cache = true,
-        protected ?ClerkProfiler   $profiler = null,
-        protected ?LoggerInterface $logger = null,
+        private ?string       $cacheDirectory = null,
+        protected array       $templateDirectories = [],
+        protected array       $preloadedTemplates = [],
+        private ?string       $locale = null,
+        private readonly bool $preformatter = false,
+        protected bool        $cache = true,
     ) {
         $this->setCacheDirectory( $cacheDirectory );
         $this->filters   = new FilterExecutor();
@@ -99,14 +96,6 @@ class Engine implements LazyService, Profilable, Loggable
         if ( $this->preformatter ) {
             $this->addExtension( new PreformatterExtension() );
         }
-    }
-
-    /**
-     * @param ?LoggerInterface $logger
-     */
-    final public function setLogger( ?LoggerInterface $logger ) : void
-    {
-        $this->logger = $logger;
     }
 
     final public function setProfiler( null|Stopwatch|ClerkProfiler $stopwatch, ?string $category = 'View' ) : void
@@ -570,8 +559,8 @@ class Engine implements LazyService, Profilable, Loggable
         // Solving atomicity to work everywhere is really pain in the ass.
         // 1) We want to do as little as possible IO calls on production.
         // Directory and file can be not writable, so on Linux we include
-        // the file directly without a shared lock,
-        // therefore, the file must be created atomically by renaming.
+        // the file directly without a shared lock, therefore,
+        // renaming must create the file atomically.
         // On Windows files cannot be renamed-to while open, so we have to acquire a lock.
         $cacheFile = $this->getCacheFile( $name );
         $cacheKey  = $this->autoRefresh ? $this->getCacheSignature( $name ) : null;

@@ -13,7 +13,6 @@ use Core\Interface\{LogHandler, Loggable};
 use Core\View\Template\Compiler\Node;
 use Core\View\Template\Compiler\Nodes\TemplateNode;
 use Core\View\Template\Runtime\Template;
-use Psr\Log\{LoggerInterface};
 use stdClass;
 
 /**
@@ -22,14 +21,6 @@ use stdClass;
 abstract class Extension implements Loggable
 {
     use LogHandler;
-
-    /**
-     * @param ?LoggerInterface $logger
-     */
-    final public function setLogger( ?LoggerInterface $logger ) : void
-    {
-        $this->logger = $logger;
-    }
 
     /**
      * Initializes before the template is compiled.
