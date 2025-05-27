@@ -9,7 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template;
 
-use Core\Interface\{LogHandler, Loggable};
+use Core\Autowire\Logger;
+use Core\Interface\Loggable;
 use Core\View\Template\Compiler\Node;
 use Core\View\Template\Compiler\Nodes\TemplateNode;
 use Core\View\Template\Runtime\Template;
@@ -20,7 +21,7 @@ use stdClass;
  */
 abstract class Extension implements Loggable
 {
-    use LogHandler;
+    use Logger;
 
     /**
      * Initializes before the template is compiled.

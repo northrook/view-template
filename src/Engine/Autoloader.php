@@ -9,14 +9,14 @@ use Core\View\Template\Exception\{CompileException, TemplateException};
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use SplFileInfo;
-use function Support\{key_hash, normalize_path, slug, str_includes};
+use function Support\{key_hash, normalize_path, slug, str_includes_any};
 
 /**
  * @used-by Engine
  */
 final class Autoloader
 {
-    use CacheHandler;
+    private readonly CacheHandler $cache;
 
     /**
      * The autoloader will first match preloaded string `$templates` by `name`,
@@ -32,15 +32,19 @@ final class Autoloader
         null|string|CacheItemPoolInterface $cache = null,
     ) {
         if ( \is_string( $cache ) ) {
+            \assert(
+                \is_dir( $cache ),
+                'Autoloader( $cache ) string arguments must be a path to a directory.',
+            );
             $cache = new LocalStorage( "{$cache}/autoloader_map.php" );
         }
-        $this->assignCacheAdapter( $cache );
+        $this->cache = new CacheHandler( $cache );
     }
 
     public function getContent( string $name ) : string
     {
         // Early return for obvious raw strings
-        if ( str_includes( $name, '< >' ) ) {
+        if ( str_includes_any( $name, '< >' ) ) {
             return $name;
         }
 
@@ -94,7 +98,7 @@ final class Autoloader
             return $name;
         }
 
-        return $this->getCache(
+        return $this->cache->get(
             'name.'.key_hash( 'xxh32', $name, $referringName ),
             fn() => $this->resolveReferredName( $name, $referringName ),
         );
@@ -159,7 +163,7 @@ final class Autoloader
             return $template;
         }
 
-        return $this->getCache(
+        return $this->cache->get(
             slug( "path.{$template}", '.' ),
             fn() => $this->resolveTemplatePath( $template ),
         );

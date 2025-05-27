@@ -10,12 +10,10 @@ declare(strict_types=1);
 namespace Core\View\Template;
 
 use Core\View\Template\Engine\{Autoloader, PreformatterExtension};
-use Core\Interface\{LazyService, LogHandler, Loggable};
-use Core\Profiler\{ClerkProfiler};
-use Core\Profiler\Interface\Profilable;
+use Core\Autowire\{Logger, Profiler};
+use Core\Interface\{LazyService, Loggable};
 use Core\View\Template\Sandbox\SandboxExtension;
 use Exception;
-use Symfony\Component\Stopwatch\Stopwatch;
 use Core\View\Template\Compiler\{TemplateFilter};
 use Core\View\Template\Compiler\Nodes\TemplateNode;
 use Core\View\Template\Engine\CoreExtension;
@@ -35,13 +33,11 @@ use BadMethodCallException;
 use function Support\{file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 use const Support\AUTO;
 
-class Engine implements LazyService, Profilable, Loggable
+class Engine implements LazyService, Loggable
 {
-    use LogHandler;
+    use Profiler, Logger;
 
     private ContentType $contentType = ContentType::HTML;
-
-    private ?ClerkProfiler $profiler = null;
 
     private FunctionExecutor $functions;
 
@@ -106,11 +102,6 @@ class Engine implements LazyService, Profilable, Loggable
         }
     }
 
-    final public function setProfiler( null|Stopwatch|ClerkProfiler $stopwatch, ?string $category = 'View' ) : void
-    {
-        $this->profiler = ClerkProfiler::from( $stopwatch, $category ?? $this::class );
-    }
-
     // </editor-fold>
 
     // <editor-fold desc="Output">
@@ -150,13 +141,14 @@ class Engine implements LazyService, Profilable, Loggable
         object|array $parameters = [],
         ?bool        $cache = AUTO,
     ) : string {
-        $profiler = $this->profiler?->event( 'render' );
+        $this->profiler->start( 'render' );
         $template = $this->createTemplate( $template, $parameters, $cache );
 
         $template->global->coreCaptured = true;
 
         $string = $template->capture( fn() => $template->render() );
-        $profiler?->stop();
+
+        $this->profiler->stop( 'render' );
         return $string;
     }
 
@@ -184,13 +176,15 @@ class Engine implements LazyService, Profilable, Loggable
             $this->disableExtension( $suppressExtension );
         }
 
-        $profiler = $this->profiler?->event( 'render' );
+        $this->profiler->start( 'render' );
+
         $template = $this->createTemplate( $name, $parameters, $cache, $preserveCacheKey );
 
         $template->global->coreCaptured = true;
 
         $string = $template->capture( fn() => $template->render( $block ) );
-        $profiler?->stop();
+
+        $this->profiler->stop( 'render' );
 
         if ( $suppressExtension ) {
             $this->enableExtension( $suppressExtension );
