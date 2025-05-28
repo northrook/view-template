@@ -9,7 +9,7 @@ use Core\View\Template\Exception\{CompileException, TemplateException};
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use SplFileInfo;
-use function Support\{key_hash, normalize_path, slug, str_includes_any};
+use function Support\{is_path, key_hash, normalize_path, slug, str_includes_any};
 
 /**
  * @used-by Engine
@@ -33,8 +33,8 @@ final class Autoloader
     ) {
         if ( \is_string( $cache ) ) {
             \assert(
-                \is_dir( $cache ),
-                'Autoloader( $cache ) string arguments must be a path to a directory.',
+                is_path( $cache ) && ! \pathinfo( $cache, PATHINFO_EXTENSION ),
+                "Autoloader( cache: {$cache} ) string arguments must be a path to a directory.",
             );
             $cache = new LocalStorage( "{$cache}/autoloader_map.php" );
         }

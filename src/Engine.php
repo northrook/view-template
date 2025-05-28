@@ -141,14 +141,14 @@ class Engine implements LazyService, Loggable
         object|array $parameters = [],
         ?bool        $cache = AUTO,
     ) : string {
-        $this->profiler->start( 'render' );
+        $this->profilerStart( 'render' );
         $template = $this->createTemplate( $template, $parameters, $cache );
 
         $template->global->coreCaptured = true;
 
         $string = $template->capture( fn() => $template->render() );
 
-        $this->profiler->stop( 'render' );
+        $this->profilerStop( 'render' );
         return $string;
     }
 
@@ -176,7 +176,7 @@ class Engine implements LazyService, Loggable
             $this->disableExtension( $suppressExtension );
         }
 
-        $this->profiler->start( 'render' );
+        $this->profilerStart( 'render' );
 
         $template = $this->createTemplate( $name, $parameters, $cache, $preserveCacheKey );
 
@@ -184,7 +184,7 @@ class Engine implements LazyService, Loggable
 
         $string = $template->capture( fn() => $template->render( $block ) );
 
-        $this->profiler->stop( 'render' );
+        $this->profilerStop( 'render' );
 
         if ( $suppressExtension ) {
             $this->enableExtension( $suppressExtension );

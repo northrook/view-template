@@ -523,7 +523,7 @@ final class TemplateParser
 
     public function setContentType( ContentType|string $type ) : static
     {
-        $this->contentType = ContentType::from( $type );
+        $this->contentType = ContentType::by( $type );
         $this->lexer->setState(
             $type === ContentType::HTML || $type === ContentType::XML
                         ? TemplateLexer::StateHtmlText

@@ -275,13 +275,13 @@ final class Filters
         string|ContentType $dest,
         string             $string,
     ) : string {
-        $dest   = ContentType::from( $dest );
+        $dest   = ContentType::by( $dest );
         $source = $info->contentType ?: ContentType::TEXT;
         if ( $source === $dest ) {
             return $string;
         }
         if ( $conv = Escaper::getConvertor( $source, $dest ) ) {
-            $info->contentType = ContentType::from( $dest );
+            $info->contentType = ContentType::by( $dest );
             return $conv( $string );
         }
 

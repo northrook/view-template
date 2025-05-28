@@ -12,26 +12,21 @@ namespace Core\View\Template;
 
 use InvalidArgumentException;
 
-enum ContentType
+enum ContentType : string
 {
-    case TEXT;
-    case HTML;
-    case XML;
-    case JS;
-    case CSS;
-    case ICAL;
+    case TEXT = 'text';
+    case HTML = 'html';
+    case XML  = 'xml';
+    case JS   = 'js';
+    case CSS  = 'css';
+    case ICAL = 'ical';
 
-    public static function from( self|string $value ) : static
+    public static function by( self|string $value ) : static
     {
         if ( $value instanceof self ) {
             return $value;
         }
 
         return self::{\strtoupper( $value )} ?? throw new InvalidArgumentException();
-    }
-
-    public function type() : string
-    {
-        return \strtolower( $this->name );
     }
 }

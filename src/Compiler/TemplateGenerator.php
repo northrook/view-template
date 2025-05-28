@@ -9,7 +9,8 @@ declare(strict_types=1);
 
 namespace Core\View\Template\Compiler;
 
-use Core\Profiler\{ClerkProfiler};
+use Core\Autowire\Profiler;
+use Core\Interface\ProfilerInterface;
 use Core\View\Template\Compiler\Nodes\{NopNode, TemplateNode, TextNode};
 use Core\View\Template\ContentType;
 use Support\PhpClass;
@@ -19,6 +20,8 @@ use Support\PhpClass;
  */
 final class TemplateGenerator
 {
+    use Profiler;
+
     public const string FQN = 'Core\\View\\Template\\Runtime';
 
     public const string NAMESPACE = 'Runtime';
@@ -71,7 +74,10 @@ final class TemplateGenerator
     /** $ʟ_l */
     public const string ARG_LINE = '$__line__';
 
-    public function __construct( protected readonly ?ClerkProfiler $profiler ) {}
+    public function __construct( ?ProfilerInterface $profiler )
+    {
+        $this->profiler = $profiler;
+    }
 
     /**
      * Compiles nodes to PHP file
@@ -89,21 +95,19 @@ final class TemplateGenerator
         ?string      $templateName = null,
         bool         $strictMode = false,
     ) : string {
-        $profiler = $this->profiler?->event( "template.generate.{$templateName}" );
+        $event = "template.generate~{$templateName}";
+
+        $this->profilerStart( $event );
 
         $context   = new PrintContext( $node->contentType );
         $generator = new PhpClass(
             className : $className,
             generator : $this::class,
         );
-        // $generator = new PhpGenerator(
-        //     className : $className,
-        //     generator : $this::class,
-        // );
 
         $code = $node->main->print( $context );
         $code = $this->templateParameters( $code, [], self::ARGS, $context );
-        $profiler?->lap();
+        $this->profilerLap( $event );
 
         $generator
                 // TODO : Multi-line $templateName should be treated as a phpdoc codeblock
@@ -112,7 +116,7 @@ final class TemplateGenerator
             ->uses( $this::FQN )
             ->extends( $this::NAMESPACE.'\\Template' )
             ->addMethod( 'main', $code, 'array '.self::ARGS );
-        $profiler?->lap();
+        $this->profilerLap( $event );
 
         $head = ( new NodeTraverser() )->traverse(
             $node->head,
@@ -120,7 +124,7 @@ final class TemplateGenerator
         );
 
         $code = $head->print( $context );
-        $profiler?->lap();
+        $this->profilerLap( $event );
 
         if ( $code || $context->paramsExtraction ) {
             $code .= 'return get_defined_vars();';
@@ -149,7 +153,7 @@ final class TemplateGenerator
 
             if ( ! $isDynamic && \property_exists( $block->name, 'value' ) ) {
                 $meta[$block->layer][$block->name->value]
-                        = $contentType->type() === $block->escaping
+                        = $contentType->value === $block->escaping
                         ? $block->method
                         : [$block->method, $block->escaping];
             }
@@ -167,7 +171,7 @@ final class TemplateGenerator
                 comment   : $block->tag->getNotation( true ).' on line '.$block->tag->position->line,
             );
         }
-        $profiler?->lap();
+        $this->profilerLap( $event );
 
         if ( isset( $meta ) ) {
             $generator->addConstant(
@@ -178,7 +182,7 @@ final class TemplateGenerator
 
         $template = $generator->toString();
 
-        $profiler?->stop();
+        $this->profilerStop( $event );
 
         return $template;
     }

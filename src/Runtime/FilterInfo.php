@@ -28,7 +28,7 @@ final class FilterInfo
 
     public function validate( array $contentTypes, ?string $name = null ) : void
     {
-        if ( ! \in_array( $this->contentType->type(), $contentTypes, true ) ) {
+        if ( ! \in_array( $this->contentType->value, $contentTypes, true ) ) {
             $name = $name ? " |{$name}" : $name;
             $type = $this->contentType ? ' '.$this->contentType->name : '';
             throw new RuntimeException( "Filter{$name} used with incompatible type{$type}." );

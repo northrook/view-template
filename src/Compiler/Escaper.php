@@ -90,7 +90,7 @@ final class Escaper
         $this->ns    = TemplateGenerator::NAMESPACE;
         $this->state = \in_array( $contentType, [ContentType::HTML, ContentType::XML], true )
                 ? self::HtmlText
-                : $contentType->type();
+                : $contentType->value;
     }
 
     public function getContentType() : ContentType
@@ -111,7 +111,7 @@ final class Escaper
     public function enterHtmlRaw( ContentType|string $subType ) : void
     {
         $this->state   = self::HtmlRawText;
-        $this->subType = $subType instanceof ContentType ? $subType->type() : $subType;
+        $this->subType = $subType instanceof ContentType ? $subType->value : $subType;
     }
 
     public function enterHtmlText( ElementNode $el ) : void
@@ -152,7 +152,7 @@ final class Escaper
 
     public function enterContentType( ContentType $type ) : void
     {
-        $this->state       = $type->type();
+        $this->state       = $type->value;
         $this->contentType = $type;
     }
 
@@ -268,10 +268,10 @@ final class Escaper
         string|ContentType $dest,
     ) : ?callable {
         if ( $source instanceof ContentType ) {
-            $source = $source->type();
+            $source = $source->value;
         }
         if ( $dest instanceof ContentType ) {
-            $dest = $dest->type();
+            $dest = $dest->value;
         }
 
         return match ( true ) {

@@ -327,7 +327,7 @@ abstract class Template
         $block = &$this->blocks[$layer ?? self::LAYER_TOP][$name];
         $block ??= new Block();
         if ( $block->contentType === null ) {
-            $block->contentType = ContentType::from( $contentType );
+            $block->contentType = ContentType::by( $contentType );
         }
         elseif ( ! Escaper::getConvertor( $contentType, $block->contentType ) ) {
             throw new RuntimeException(
