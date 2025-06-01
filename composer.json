@@ -33,7 +33,6 @@
     "ext-fileinfo": "*",
     "ext-iconv": "*",
     "northrook/core": "dev-main",
-    "northrook/clerk": "dev-main",
     "northrook/view-element": "dev-main",
     "psr/log": "^3.0",
     "northrook/cache": "dev-main",
