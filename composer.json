@@ -32,10 +32,10 @@
     "ext-intl": "*",
     "ext-fileinfo": "*",
     "ext-iconv": "*",
-    "northrook/core": "dev-main",
-    "northrook/view-element": "dev-main",
     "psr/log": "^3.0",
+    "northrook/core": "dev-main",
     "northrook/cache": "dev-main",
+    "northrook/view-element": "dev-main",
     "northrook/php-generator": "dev-main"
   },
   "require-dev": {
