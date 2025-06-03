@@ -190,7 +190,7 @@ class CachingIterator extends \CachingIterator implements Countable
     }
 
     /**
-     * Returns the next key or null if position is not valid.
+     * Returns the next key or null if the position is not valid.
      */
     public function getNextKey() : mixed
     {
@@ -199,7 +199,7 @@ class CachingIterator extends \CachingIterator implements Countable
     }
 
     /**
-     * Returns the next element or null if position is not valid.
+     * Returns the next element or null if the position is not valid.
      */
     public function getNextValue() : mixed
     {

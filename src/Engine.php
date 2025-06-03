@@ -11,7 +11,6 @@ namespace Core\View\Template;
 
 use Core\View\Template\Engine\{Autoloader, PreformatterExtension};
 use Core\Autowire\{Logger, Profiler};
-use Core\Interface\{LazyService, Loggable};
 use Core\View\Template\Sandbox\SandboxExtension;
 use Exception;
 use Core\View\Template\Compiler\{TemplateFilter};
@@ -33,7 +32,7 @@ use BadMethodCallException;
 use function Support\{file_purge, is_empty, is_path, key_hash, normalize_path, slug};
 use const Support\AUTO;
 
-class Engine implements LazyService, Loggable
+class Engine
 {
     use Profiler, Logger;
 

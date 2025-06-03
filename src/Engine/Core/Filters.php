@@ -194,7 +194,7 @@ final class Filters
     }
 
     /**
-     * Join array of text or HTML elements with a string.
+     * Join an array of text or HTML elements with a string.
      *
      * @param string[] $arr
      * @param string   $glue
